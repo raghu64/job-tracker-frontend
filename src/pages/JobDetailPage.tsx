@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../api/api";
 import JobForm from "../components/JobForm";
-import { Job, Employer } from "@/types/models";
+import { Job, Employer } from "../types/models";
+import { useJobs } from "../contexts/JobsContext";
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -10,28 +11,33 @@ export default function JobDetailPage() {
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+//   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
+  const {jobs, removeJob } = useJobs();
+
   const openEditModal = () => setIsEditOpen(true);
   const closeEditModal = () => setIsEditOpen(false);
-  const refreshJob = () => api.get(`/jobs/${id}`).then(r => setJob(r.data));
+//   const refreshJob = () => api.get(`/jobs/${id}`).then(r => setJob(r.data));
 
   useEffect(() => {
     if (id) {
       setLoading(true);
       api.get("/employers").then(r => setEmployers(r.data));
-      api.get<Job>(`/jobs/${id}`)
-        .then(res => {
-          setJob(res.data);
-          setError(null);
-        })
-        .catch(() => {
-          setError("Failed to load job details.");
-          setJob(null);
-        })
-        .finally(() => setLoading(false));
+      let job = jobs.filter(j => j._id === id)[0]
+      setJob(job)
+      setLoading(false)
+    //   api.get<Job>(`/jobs/${id}`)
+    //     .then(res => {
+    //       setJob(res.data);
+    //       setError(null);
+    //     })
+    //     .catch(() => {
+    //       setError("Failed to load job details.");
+    //       setJob(null);
+    //     })
+    //     .finally(() => setLoading(false));
     }
   }, [id]);
 
@@ -43,11 +49,14 @@ export default function JobDetailPage() {
     
 //   };
 
-  const handleEditSuccess = () => {
+  const handleEditSuccess = (job: Job) => {
     // setModalOpen(false);
     // setJob(updatedJob);
+    
+    // refreshJobs();
+    // let job = jobs.filter(j => j._id === id)[0]
+    setJob(job)
     closeEditModal();
-    refreshJob();
   };
 
   const handleDelete = async () => {
@@ -57,6 +66,7 @@ export default function JobDetailPage() {
     setDeleting(true);
     try {
       await api.delete(`/jobs/${id}`);
+      removeJob(id);
       navigate("/jobs"); // redirect to jobs list after delete
     } catch {
       alert("Failed to delete job.");
@@ -65,7 +75,7 @@ export default function JobDetailPage() {
   };
 
   if (loading) return <div className="p-4">Loading job details...</div>;
-  if (error) return <div className="p-4 text-red-600">{error}</div>;
+//   if (error) return <div className="p-4 text-red-600">{error}</div>;
   if (!job) return <div className="p-4">Job not found.</div>;
 
   return (

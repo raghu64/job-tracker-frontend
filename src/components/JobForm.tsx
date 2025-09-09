@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { Job } from "../types/models";
 import api from "../api/api";
+import { useJobs } from "../contexts/JobsContext";
+
 console.log("new Date: ", new Date().toString())
 type Props = {
-  onSuccess: () => void;
+  onSuccess: (job: Job) => void;
   onCancel?: () => void;
   employerOptions: { value: string; label: string }[];
   jobToEdit?: Job;
@@ -16,20 +18,27 @@ const statusOptions = [
 
 const initialJob: Job = {
   title: "", jobLocation: "", status: "Submitted to Vendor",
-  vendor: "", client: "", endClient: "", employerId: "", dateSubmitted: new Date().toString(), notes: ""
+  vendor: "", client: "", endClient: "", employerId: "", dateSubmitted: new Date().toISOString().split('T')[0], notes: ""
 };
 
 export default function JobForm({ onSuccess, employerOptions, jobToEdit, onCancel }: Props) {
   const [job, setJob] = useState<Job>(jobToEdit || initialJob);
+  const { addJob, updateJob } = useJobs();
 
   const setField = (field: string, value: any) => setJob({ ...job, [field]: value });
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    jobToEdit && jobToEdit._id
-      ? await api.put(`/jobs/${jobToEdit._id}`, job)
-      : await api.post("/jobs", job);
-    onSuccess();
+    if(jobToEdit && jobToEdit._id){
+      await api.put(`/jobs/${jobToEdit._id}`, job);
+      updateJob({...job, _id: jobToEdit._id});
+    } else {
+      const res = await api.post("/jobs", job);
+      addJob(res.data);
+    }
+      // ? await api.put(`/jobs/${jobToEdit._id}`, job)
+      // : await api.post("/jobs", job);
+    onSuccess(job);
     setJob(initialJob);
   };
 

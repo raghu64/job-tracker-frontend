@@ -3,10 +3,12 @@ import api from "../api/api";
 import CallList from "../components/CallList";
 import CallForm from "../components/CallForm";
 import { Employer, Call, Job } from "../types/models";
+import { useJobs } from "../contexts/JobsContext";
+import { useCalls } from "../contexts/CallsContext";
 
 export default function CallsPage() {
-  const [calls, setCalls] = useState<Call[]>([]);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  // const [calls, setCalls] = useState<Call[]>([]);
+  // const [jobs, setJobs] = useState<Job[]>([]);
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [editingCall, setEditingCall] = useState<Call | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -14,10 +16,12 @@ export default function CallsPage() {
   const [sortField, setSortField] = useState<keyof Call>("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
+  const { jobs } = useJobs();
+  const { refreshCalls, removeCall, calls } = useCalls();
   useEffect(() => {
-    api.get("/calls").then(r => setCalls(r.data));
+    // api.get("/calls").then(r => setCalls(r.data));
     api.get("/employers").then(r => setEmployers(r.data));
-    api.get("/jobs/mine").then(r => setJobs(r.data));
+    // api.get("/jobs/mine").then(r => setJobs(r.data));
   }, []);
 
 
@@ -26,12 +30,12 @@ export default function CallsPage() {
     return acc;
   }, {} as Record<string, Job>);
 
-  const filteredCalls = calls.filter(call =>
-    [call.name, call.vendor, call.phoneNumber, call.notes, call.date]
-      .join(" ")
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
+  // const filteredCalls = calls.filter(call =>
+  //   [call.name, call.vendor, call.phoneNumber, call.notes, call.date]
+  //     .join(" ")
+  //     .toLowerCase()
+  //     .includes(search.toLowerCase())
+  // );
 
   const sortedJobs = [...calls]
     .filter(call =>
@@ -48,7 +52,7 @@ export default function CallsPage() {
       return x < y ? 1 : -1;
     });
 
-  const refreshCalls = () => api.get("/calls").then(r => setCalls(r.data));
+  // const refreshCalls = () => api.get("/calls").then(r => setCalls(r.data));
 
   const handleAddClick = () => setModalOpen(true);
 
@@ -67,7 +71,7 @@ export default function CallsPage() {
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this call?")) {
       await api.delete(`/calls/${id}`);
-      refreshCalls();
+      removeCall(id);
     }
   };
 

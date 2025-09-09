@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Call, Job } from "../types/models";
 import api from "../api/api";
+import { useCalls } from "../contexts/CallsContext";
 
 type Props = {
   onSuccess: () => void;
@@ -16,6 +17,9 @@ const initialCall: Call = { jobId: "", name: "", vendor: "", phoneNumber: "", da
 export default function CallForm({ callToEdit, jobs, onSuccess, onCancel, employerOptions }: Props) {
   const [call, setCall] = useState<Call>(initialCall);
   const [error, setError] = useState<string>("");
+
+  const { addCall, updateCall } = useCalls();
+
   const setField = (k: string, v: any) => setCall({ ...call, [k]: v });
 
 
@@ -30,8 +34,10 @@ export default function CallForm({ callToEdit, jobs, onSuccess, onCancel, employ
     try {
       if (call._id) {
         await api.put(`/calls/${call._id}`, call);
+        updateCall(call);
       } else {
         await api.post("/calls", call);
+        addCall(call);
       }
       setCall(initialCall);
       onSuccess();
@@ -47,6 +53,8 @@ export default function CallForm({ callToEdit, jobs, onSuccess, onCancel, employ
     }
   };
 
+  if (error) return <div className="p-4 text-red-600">{error}</div>;
+  
   return (
     <form onSubmit={onSubmit} className="bg-white rounded p-4 shadow grid gap-4 mb-8">
       <input className="input input-bordered w-full" name="name" value={call.name || ""} onChange={e => setField("name", e.target.value)} placeholder="Name" />

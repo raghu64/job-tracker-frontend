@@ -1,8 +1,8 @@
 import axios from "axios";
 import { getAuthUser, removeAuthUser } from "../utils/storage";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 
-export const API_URL = "http://localhost:4000/api/v1";
+export const API_URL = process.env.API_URL || "http://localhost:4000/api/v1";  
 
 // const navigate = useNavigate();
 const api = axios.create({
@@ -32,6 +32,11 @@ api.interceptors.request.use((config) => {
     if (token) {
       config.headers = config.headers || {};
       config.headers["Authorization"] = `Bearer ${token}`;
+    } else {
+      // console.trace("No token found, cancelling request to:", config.url);
+      return Promise.reject(
+          new axios.Cancel("No authorization token available")
+        );
     }
   } else {
     if (config.headers && config.headers["Authorization"]) {

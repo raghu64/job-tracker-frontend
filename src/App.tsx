@@ -9,6 +9,8 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 // import NotFound from "./pages/NotFound";
 import { useAuth } from "./auth/useAuth";
+import { JobsProvider } from "./contexts/JobsContext";
+import { CallsProvider } from "./contexts/CallsContext";
 
 // PrivateRoute component for RBAC
 const PrivateRoute = ({ children }: { children: React.ReactNode }): React.ReactElement => {
@@ -21,22 +23,26 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }): React.ReactE
 };
 
 const App: React.FC = () => (
-  <BrowserRouter>
-    <Routes>
-      {/* Default to login if root */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
-        <Route path="jobs" element={<JobsPage />} />
-        <Route path="jobs/:id" element={<JobDetailPage />} />
-        <Route path="employers" element={<EmployersPage />} />
-        <Route path="calls" element={<CallsPage />} />
-      </Route>
-      {/* Not found fallback */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
-  </BrowserRouter>
+  <JobsProvider>
+    <CallsProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Default to login if root */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+            <Route path="jobs" element={<JobsPage />} />
+            <Route path="jobs/:id" element={<JobDetailPage />} />
+            <Route path="employers" element={<EmployersPage />} />
+            <Route path="calls" element={<CallsPage />} />
+          </Route>
+          {/* Not found fallback */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </CallsProvider>
+  </JobsProvider>
 );
 
 export default App;

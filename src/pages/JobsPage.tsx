@@ -3,9 +3,10 @@ import api from "../api/api";
 import JobList from "../components/JobList";
 import JobForm from "../components/JobForm";
 import { Employer, Job } from "../types/models";
+import { useJobs } from "../contexts/JobsContext";
 
 export default function JobsPage() {
-  const [jobs, setJobs] = useState<Job[]>([]);
+  // const [jobs, setJobs] = useState<Job[]>([]);
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -13,8 +14,10 @@ export default function JobsPage() {
   const [sortField, setSortField] = useState<keyof Job>("dateSubmitted");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
+  const { jobs, removeJob, refreshJobs } = useJobs();
+
   useEffect(() => {
-    api.get("/jobs/mine").then(r => setJobs(r.data));
+    // api.get("/jobs/mine").then(r => setJobs(r.data));
     api.get("/employers").then(r => setEmployers(r.data));
   }, []);
 
@@ -27,7 +30,7 @@ export default function JobsPage() {
 
   const sortedJobs = [...jobs]
     .filter(job =>
-      [job.title, job.jobLocation, job.status, job.client, job.vendor]
+      [job.title, job.jobLocation, job.jobDescription, job.status, job.client, job.vendor]
         .join(" ")
         .toLowerCase()
         .includes(search.toLowerCase())
@@ -40,7 +43,7 @@ export default function JobsPage() {
       return x < y ? 1 : -1;
     });
 
-  const refreshJobs = () => api.get("/jobs/mine").then(r => setJobs(r.data));
+  // const refreshJobs = () => api.get("/jobs/mine").then(r => setJobs(r.data));
 
   const handleAddClick = () => setModalOpen(true);
 
@@ -59,7 +62,7 @@ export default function JobsPage() {
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this job?")) {
       await api.delete(`/jobs/${id}`);
-      refreshJobs();
+      removeJob(id);
     }
   };
 
