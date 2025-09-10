@@ -2,8 +2,8 @@ import axios from "axios";
 import { getAuthUser, removeAuthUser } from "../utils/storage";
 // import { useNavigate } from "react-router-dom";
 
-export const API_URL = process.env.API_URL || "http://localhost:4000/api/v1";  
-console.log("API_URL:", process.env.API_URL, ", ", API_URL);
+export const API_URL = process.env.REACT_APP_API_URL || "http://localhost:4000/api/v1";  
+console.log("REACT_APP_HELLO:", process.env.REACT_APP_HELLO);
 
 // const navigate = useNavigate();
 const api = axios.create({
