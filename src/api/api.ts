@@ -3,6 +3,7 @@ import { getAuthUser, removeAuthUser } from "../utils/storage";
 // import { useNavigate } from "react-router-dom";
 
 export const API_URL = process.env.API_URL || "http://localhost:4000/api/v1";  
+console.log("API_URL:", process.env.API_URL, ", ", API_URL);
 
 // const navigate = useNavigate();
 const api = axios.create({
