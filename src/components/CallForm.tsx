@@ -86,7 +86,7 @@ export default function CallForm({ callToEdit, jobs, onSuccess, onCancel, employ
         <button type="submit" className="bg-blue-800 text-white px-4 py-2 rounded hover:bg-blue-700">
           {callToEdit ? "Update" : "Add"} Call
         </button>
-        {callToEdit && onCancel &&
+        {onCancel &&
           <button type="button" onClick={onCancel} className="px-4 py-2 rounded border border-gray-400 hover:bg-gray-100">
             Cancel
           </button>}

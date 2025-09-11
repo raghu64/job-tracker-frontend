@@ -87,7 +87,7 @@ export default function JobForm({ onSuccess, employerOptions, jobToEdit, onCance
         <button type="submit" className="bg-blue-800 text-white px-4 py-2 rounded hover:bg-blue-700">
           {jobToEdit ? "Update" : "Add"} Job
         </button>
-        {jobToEdit && onCancel &&
+        {onCancel &&
           <button type="button" onClick={onCancel} className="px-4 py-2 rounded border border-gray-400 hover:bg-gray-100">
             Cancel
           </button>}

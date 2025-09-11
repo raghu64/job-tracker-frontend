@@ -1,17 +1,23 @@
 import React, { useEffect, useState } from "react";
+
 import api from "../api/api";
+
 import CallList from "../components/CallList";
+
 import CallForm from "../components/CallForm";
+
 import { Call, Job } from "../types/models";
+
 import { useJobs } from "../contexts/JobsContext";
+
 import { useCalls } from "../contexts/CallsContext";
+
 import { useEmployers } from "../contexts/EmployersContext";
+
 import { useLoading } from "../contexts/LoadingContext";
 
 export default function CallsPage() {
-  // const [calls, setCalls] = useState<Call[]>([]);
-  // const [jobs, setJobs] = useState<Job[]>([]);
-  // const [employers, setEmployers] = useState<Employer[]>([]);
+
   const [editingCall, setEditingCall] = useState<Call | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -21,30 +27,20 @@ export default function CallsPage() {
   const { jobs } = useJobs();
   const { employers } = useEmployers();
   const { refreshCalls, removeCall, calls } = useCalls();
-
   const { setLoading } = useLoading();
 
-  useEffect(() => {
-    // api.get("/calls").then(r => setCalls(r.data));
-    // api.get("/employers").then(r => setEmployers(r.data));
-    // api.get("/jobs/mine").then(r => setJobs(r.data));
-  }, []);
-
+  // useEffect(() => {
+  //   // No initial API calls here as calls, jobs, employers managed by context
+  // }, []);
 
   const jobMap = jobs.reduce((acc, job) => {
     acc[job._id!] = job;
     return acc;
   }, {} as Record<string, Job>);
 
-  // const filteredCalls = calls.filter(call =>
-  //   [call.name, call.vendor, call.phoneNumber, call.notes, call.date]
-  //     .join(" ")
-  //     .toLowerCase()
-  //     .includes(search.toLowerCase())
-  // );
-
-  const sortedJobs = [...calls]
-    .filter(call =>
+  // Sorting and filtering calls based on search and sort criteria
+  const sortedCalls = [...calls]
+    .filter((call) =>
       [call.name, call.vendor, call.phoneNumber, call.notes, call.date]
         .join(" ")
         .toLowerCase()
@@ -58,8 +54,6 @@ export default function CallsPage() {
       return x < y ? 1 : -1;
     });
 
-  // const refreshCalls = () => api.get("/calls").then(r => setCalls(r.data));
-
   const handleAddClick = () => setModalOpen(true);
 
   const handleFormSuccess = () => {
@@ -67,7 +61,10 @@ export default function CallsPage() {
     refreshCalls();
   };
 
-  const handleFormCancel = () => setModalOpen(false);
+  const handleFormCancel = () => {
+    setModalOpen(false);
+    setEditingCall(null);
+  }
 
   const handleEdit = (call: Call) => {
     setEditingCall(call);
@@ -84,60 +81,55 @@ export default function CallsPage() {
   };
 
   return (
-    <div className="flex w-full flex-col gap-8 px-4 py-8 items-start">
-      <div className="flex justify-between items-center w-full mb-4">
-        <h2 className="text-2xl font-bold">Calls</h2>
+    <div className="max-w-screen-md mx-auto p-4 sm:p-6 bg-white rounded shadow">
+      <h1 className="text-2xl font-bold mb-4">Calls</h1>
+
+      <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
         <input
-            type="text"
-            className="input input-bordered px-3 py-2 rounded border border-blue-500"
-            placeholder="Search calls..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+          type="search"
+          placeholder="Search calls..."
+          className="input input-bordered w-full sm:w-auto sm:flex-1"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <button
-          className="bg-blue-700 text-white px-4 py-2 rounded font-semibold hover:bg-blue-800 transition"
           onClick={handleAddClick}
+          className="bg-blue-700 text-white px-4 py-2 rounded font-semibold hover:bg-blue-800 btn btn-primary w-full sm:w-auto transition"
         >
           + Add Call
         </button>
       </div>
-      <div className="flex-1 overflow-auto w-full">
+
+      <div className="overflow-x-auto">
         <CallList
-          calls={sortedJobs}
+          calls={sortedCalls}
+          employers={employers}
           jobMap={jobMap}
           sortField={sortField}
           sortOrder={sortOrder}
-          onSort={(field) => {
-            if (sortField === field) setSortOrder(order => (order === "asc" ? "desc" : "asc"));
+          onSort={(field: keyof Call) => {
+            if (sortField === field)
+              setSortOrder((order) => (order === "asc" ? "desc" : "asc"));
             else {
               setSortField(field);
               setSortOrder("asc");
             }
           }}
-          employers={employers}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
       </div>
-      {/* Modal */}
+
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-          <div className="bg-white w-full max-w-md p-8 rounded shadow-lg relative">
-            <h3 className="text-lg font-semibold mb-4">Add Call</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+          <div className="bg-white rounded shadow-lg w-full max-w-lg p-6 max-h-[80vh] overflow-auto relative">
             <CallForm
-              jobs={jobs || []}
-              employerOptions={employers.map(e => ({ value: e._id!, label: e.name }))}
+              employerOptions={employers.map((e) => ({ value: e._id!, label: e.name }))}
               callToEdit={editingCall || undefined}
               onSuccess={handleFormSuccess}
               onCancel={handleFormCancel}
+              jobs={jobs}
             />
-            <button
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-xl"
-              onClick={handleFormCancel}
-              aria-label="Close"
-            >
-              ✖
-            </button>
           </div>
         </div>
       )}

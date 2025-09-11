@@ -12,11 +12,12 @@ type Props = {
 };
 
 export default function EmployerForm({ onSuccess, onCancel, employerToEdit }: Props) {
+  const emptyEmployer: Employer = { name: "" };
   const { addEmployer, updateEmployer } = useEmployers();
-  const [emp, setEmp] = useState<Employer>({ name: "" });
+  const [emp, setEmp] = useState<Employer>(employerToEdit || emptyEmployer);
   const [error, setError] = useState<string>("");
   const setField = (k: string, v: any) => setEmp({ ...emp, [k]: v });
-  const emptyEmployer: Employer = { name: "" };
+  
   
   const { setLoading } = useLoading();
 
@@ -58,7 +59,7 @@ export default function EmployerForm({ onSuccess, onCancel, employerToEdit }: Pr
         >
           {emp._id ? "Update Employer" : "Add Employer"}
         </button>
-        {emp._id && onCancel && (
+        {onCancel && (
           <button
             type="button"
             className="px-4 py-2 rounded border border-gray-400 hover:bg-gray-100"
