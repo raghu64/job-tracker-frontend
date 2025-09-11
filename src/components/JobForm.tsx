@@ -68,7 +68,7 @@ export default function JobForm({ onSuccess, employerOptions, jobToEdit, onCance
         onChange={e => setField("endClient", e.target.value)} placeholder="End Client" />
       <input type="date" className="input input-bordered w-full" name="dateSubmitted" value={job.dateSubmitted ? job.dateSubmitted.split("T")[0] : ""}
         onChange={e => setField("dateSubmitted", e.target.value)} placeholder="Due Date" />
-      <select className="input input-bordered w-full" name="employerId" value={job.employerId} required
+      <select className="input input-bordered w-full" name="employerId" value={job.employerId}
         onChange={e => setField("employerId", e.target.value)}>
         <option value="">-- Employer --</option>
         {employerOptions.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}

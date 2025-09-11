@@ -1,17 +1,10 @@
 import React, { useEffect, useState } from "react";
-
 import api from "../api/api";
-
 import JobList from "../components/JobList";
-
 import JobForm from "../components/JobForm";
-
 import { Job } from "../types/models";
-
 import { useJobs } from "../contexts/JobsContext";
-
 import { useEmployers } from "../contexts/EmployersContext";
-
 import { useLoading } from "../contexts/LoadingContext";
 
 export default function JobsPage() {
@@ -20,19 +13,13 @@ export default function JobsPage() {
   // const [employers, setEmployers] = useState([]);
 
   const [editingJob, setEditingJob] = useState<Job | null>(null);
-
   const [modalOpen, setModalOpen] = useState(false);
-
   const [search, setSearch] = useState("");
-
   const [sortField, setSortField] = useState<keyof Job>("dateSubmitted");
-
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const { employers } = useEmployers();
-
   const { jobs, removeJob, refreshJobs } = useJobs();
-
   const { setLoading } = useLoading();
 
   useEffect(() => {
