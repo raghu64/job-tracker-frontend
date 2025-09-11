@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Call, Job } from "../types/models";
 import api from "../api/api";
 import { useCalls } from "../contexts/CallsContext";
+import { useLoading } from "../contexts/LoadingContext";
 
 type Props = {
   onSuccess: () => void;
@@ -20,6 +21,8 @@ export default function CallForm({ callToEdit, jobs, onSuccess, onCancel, employ
 
   const { addCall, updateCall } = useCalls();
 
+  const { setLoading } = useLoading();
+
   const setField = (k: string, v: any) => setCall({ ...call, [k]: v });
 
 
@@ -30,7 +33,7 @@ export default function CallForm({ callToEdit, jobs, onSuccess, onCancel, employ
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    setLoading(true);
     try {
       if (call._id) {
         await api.put(`/calls/${call._id}`, call);
@@ -50,6 +53,8 @@ export default function CallForm({ callToEdit, jobs, onSuccess, onCancel, employ
       } else {
         setError("An unexpected error occurred. Please try again.");
       }
+    } finally {
+      setLoading(false);
     }
   };
 

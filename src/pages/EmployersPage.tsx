@@ -1,37 +1,55 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import api from "../api/api";
 import EmployerList from "../components/EmployerList";
 import EmployerForm from "../components/EmployerForm";
 import { Employer } from "../types/models";
+import { useEmployers } from "../contexts/EmployersContext";
+import { useLoading } from "../contexts/LoadingContext";
 
 export default function EmployersPage() {
-  const [employers, setEmployers] = useState<Employer[]>([]);
-  const [editingEmployer, setEditingEmployer] = useState<Employer | null>(null);
+  // const [employers, setEmployers] = useState<Employer[]>([]);
+  // const [editingEmployer, setEditingEmployer] = useState<Employer | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const { setLoading } = useLoading();
+  const { employers, removeEmployer } = useEmployers();
 
-  useEffect(() => {
-    api.get("/employers").then(r => setEmployers(r.data));
-  }, []);
+  // useEffect(() => {
+  //   setLoading(true);
+  //   api.get("/employers").then(r => {
+  //     setEmployers(r.data);
+  //     setLoading(false);
+  //   });
+  // }, []);
 
-  const refreshEmployers = () => api.get("/employers").then(r => setEmployers(r.data));
+  // const refreshEmployers = () => {
+  //   setLoading(true);
+  //   api.get("/employers").then(r => {
+  //     setEmployers(r.data);
+  //     setLoading(false);
+  //   });
+  // }
 
   const handleAddClick = () => setModalOpen(true);
 
   const handleFormSuccess = () => {
     setModalOpen(false);
-    refreshEmployers();
+    // refreshEmployers();
   };
 
   const handleFormCancel = () => setModalOpen(false);
 
   const handleEdit = (employer: Employer) => {
-    setEditingEmployer(employer);
+    // todo: implement edit functionality
+    // setEditingEmployer(employer);
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this employer?")) {
+      setLoading(true);
       await api.delete(`/employers/${id}`);
-      refreshEmployers();
+      removeEmployer(id);
+      // refreshEmployers();
+      setLoading(false);
     }
   };
 

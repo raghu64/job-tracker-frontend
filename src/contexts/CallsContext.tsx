@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import api from "../api/api";
 import { Call } from "../types/models";
 import { useAuth } from "../auth/useAuth"
+import { useLoading } from "./LoadingContext";
 
 type CallsContextType = {
   calls: Call[];
@@ -16,6 +17,8 @@ const CallsContext = createContext<CallsContextType | undefined>(undefined);
 export function CallsProvider({ children }: { children: ReactNode }) {
   const [calls, setCalls] = useState<Call[]>([]);
   const { user } = useAuth();
+
+  const { setLoading } = useLoading();
 
   // On mount, fetch calls from API
   // useEffect(() => {
@@ -33,8 +36,10 @@ export function CallsProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const refreshCalls = async () => {
+    setLoading(true);
     const res = await api.get<Call[]>("/calls");
     setCalls(res.data);
+    setLoading(false);
   };
 
   const addCall = (call: Call) => setCalls(calls => [call, ...calls]);

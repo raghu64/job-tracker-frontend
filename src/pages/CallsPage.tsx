@@ -2,14 +2,16 @@ import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import CallList from "../components/CallList";
 import CallForm from "../components/CallForm";
-import { Employer, Call, Job } from "../types/models";
+import { Call, Job } from "../types/models";
 import { useJobs } from "../contexts/JobsContext";
 import { useCalls } from "../contexts/CallsContext";
+import { useEmployers } from "../contexts/EmployersContext";
+import { useLoading } from "../contexts/LoadingContext";
 
 export default function CallsPage() {
   // const [calls, setCalls] = useState<Call[]>([]);
   // const [jobs, setJobs] = useState<Job[]>([]);
-  const [employers, setEmployers] = useState<Employer[]>([]);
+  // const [employers, setEmployers] = useState<Employer[]>([]);
   const [editingCall, setEditingCall] = useState<Call | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -17,10 +19,14 @@ export default function CallsPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const { jobs } = useJobs();
+  const { employers } = useEmployers();
   const { refreshCalls, removeCall, calls } = useCalls();
+
+  const { setLoading } = useLoading();
+
   useEffect(() => {
     // api.get("/calls").then(r => setCalls(r.data));
-    api.get("/employers").then(r => setEmployers(r.data));
+    // api.get("/employers").then(r => setEmployers(r.data));
     // api.get("/jobs/mine").then(r => setJobs(r.data));
   }, []);
 
@@ -70,8 +76,10 @@ export default function CallsPage() {
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this call?")) {
+      setLoading(true);
       await api.delete(`/calls/${id}`);
       removeCall(id);
+      setLoading(false);
     }
   };
 

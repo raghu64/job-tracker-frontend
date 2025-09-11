@@ -2,20 +2,25 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../api/api";
 import JobForm from "../components/JobForm";
-import { Job, Employer } from "../types/models";
+import { Job } from "../types/models";
 import { useJobs } from "../contexts/JobsContext";
+import { useEmployers } from "../contexts/EmployersContext";
+import { useLoading } from "../contexts/LoadingContext";
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [employers, setEmployers] = useState<Employer[]>([]);
+  // const [employers, setEmployers] = useState<Employer[]>([]);
   const [job, setJob] = useState<Job | null>(null);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 //   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const { employers } = useEmployers();
 
   const {jobs, removeJob } = useJobs();
+
+  const { setLoading } = useLoading();
 
   const openEditModal = () => setIsEditOpen(true);
   const closeEditModal = () => setIsEditOpen(false);
@@ -24,7 +29,7 @@ export default function JobDetailPage() {
   useEffect(() => {
     if (id) {
       setLoading(true);
-      api.get("/employers").then(r => setEmployers(r.data));
+      // api.get("/employers").then(r => setEmployers(r.data));
       let job = jobs.filter(j => j._id === id)[0]
       setJob(job)
       setLoading(false)
@@ -39,7 +44,7 @@ export default function JobDetailPage() {
     //     })
     //     .finally(() => setLoading(false));
     }
-  }, [id]);
+  }, [id, jobs, setLoading]);
 
 
   const getEmployerName = (id?: string) =>
@@ -64,6 +69,7 @@ export default function JobDetailPage() {
     if (!window.confirm("Are you sure you want to delete this job?")) return;
 
     setDeleting(true);
+    setLoading(true);
     try {
       await api.delete(`/jobs/${id}`);
       removeJob(id);
@@ -71,10 +77,12 @@ export default function JobDetailPage() {
     } catch {
       alert("Failed to delete job.");
       setDeleting(false);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) return <div className="p-4">Loading job details...</div>;
+  // if (loading) return <div className="p-4">Loading job details...</div>;
 //   if (error) return <div className="p-4 text-red-600">{error}</div>;
   if (!job) return <div className="p-4">Job not found.</div>;
 

@@ -2,23 +2,31 @@ import React, { useEffect, useState } from "react";
 import api from "../api/api";
 import JobList from "../components/JobList";
 import JobForm from "../components/JobForm";
-import { Employer, Job } from "../types/models";
+import { Job } from "../types/models";
 import { useJobs } from "../contexts/JobsContext";
+import { useEmployers } from "../contexts/EmployersContext";
+import { useLoading } from "../contexts/LoadingContext";
 
 export default function JobsPage() {
   // const [jobs, setJobs] = useState<Job[]>([]);
-  const [employers, setEmployers] = useState<Employer[]>([]);
+  // const [employers, setEmployers] = useState<Employer[]>([]);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState("")
   const [sortField, setSortField] = useState<keyof Job>("dateSubmitted");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const { employers } = useEmployers();
 
   const { jobs, removeJob, refreshJobs } = useJobs();
+  const { setLoading } = useLoading();
 
   useEffect(() => {
-    // api.get("/jobs/mine").then(r => setJobs(r.data));
-    api.get("/employers").then(r => setEmployers(r.data));
+    // setLoading(true);
+    // // api.get("/jobs/mine").then(r => setJobs(r.data));
+    // api.get("/employers").then(r => {
+    //   setEmployers(r.data);
+    //   setLoading(false);
+    // });
   }, []);
 
   // const filteredJobs = jobs.filter(job =>
@@ -61,8 +69,10 @@ export default function JobsPage() {
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this job?")) {
+      setLoading(true);
       await api.delete(`/jobs/${id}`);
       removeJob(id);
+      setLoading(false);
     }
   };
 

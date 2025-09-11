@@ -1,8 +1,12 @@
 import React from "react";
 import { Outlet, Link } from "react-router-dom";
 import LogoutButton from "../components/LogoutButton";
+import { useLoading } from "../contexts/LoadingContext";
+import LoadingScreen from "../components/LoadingScreen";
 
 export default function Layout() {
+  const { loading } = useLoading();
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="flex items-center justify-between bg-gray-100 p-4 shadow">
@@ -23,7 +27,8 @@ export default function Layout() {
         </nav>
       </header>
 
-      <main className="flex-1 p-6 bg-gray-50">
+      <main className="flex-1 p-6 bg-gray-50 relative">
+        {loading && <LoadingScreen />}
         <Outlet />
       </main>
 

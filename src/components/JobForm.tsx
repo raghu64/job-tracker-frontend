@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Job } from "../types/models";
 import api from "../api/api";
 import { useJobs } from "../contexts/JobsContext";
+import { useLoading } from "../contexts/LoadingContext";
+
 
 console.log("new Date: ", new Date().toString())
 type Props = {
@@ -24,11 +26,14 @@ const initialJob: Job = {
 export default function JobForm({ onSuccess, employerOptions, jobToEdit, onCancel }: Props) {
   const [job, setJob] = useState<Job>(jobToEdit || initialJob);
   const { addJob, updateJob } = useJobs();
+  
+  const { setLoading } = useLoading();
 
   const setField = (field: string, value: any) => setJob({ ...job, [field]: value });
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     if(jobToEdit && jobToEdit._id){
       await api.put(`/jobs/${jobToEdit._id}`, job);
       updateJob({...job, _id: jobToEdit._id});
@@ -40,6 +45,7 @@ export default function JobForm({ onSuccess, employerOptions, jobToEdit, onCance
       // : await api.post("/jobs", job);
     onSuccess(job);
     setJob(initialJob);
+    setLoading(false);
   };
 
   return (

@@ -2,13 +2,16 @@ import React, { useState, useContext } from "react";
 import AuthContext from "../auth/AuthContext";
 import api from "../api/api";
 import { useNavigate, Navigate } from "react-router-dom";
+import { useLoading } from "../contexts/LoadingContext";
 
 const LoginPage: React.FC = () => {
   const { user, login } = useContext(AuthContext);
+  // const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { setLoading } = useLoading();
 
   // Redirect to /jobs if already logged in
   if (user) {
@@ -17,6 +20,7 @@ const LoginPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     setError("");
     try {
       const res = await api.post("/auth/login", { email, password });
@@ -31,6 +35,8 @@ const LoginPage: React.FC = () => {
       navigate("/jobs");
     } catch {
       setError("Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,12 +74,12 @@ const LoginPage: React.FC = () => {
         >
           Login
         </button>
-        <p className="mt-6 text-center text-sm text-gray-600">
+        {/* <p className="mt-6 text-center text-sm text-gray-600">
           Don't have an account?{" "}
           <a href="/register" className="text-blue-700 hover:underline font-semibold">
             Register here
           </a>
-        </p>
+        </p> */}
       </form>
     </div>
   );

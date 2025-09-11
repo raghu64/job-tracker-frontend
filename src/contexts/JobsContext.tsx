@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext, ReactNode } from
 import api from "../api/api";
 import { Job } from "../types/models";
 import { useAuth } from "../auth/useAuth"
+import { useLoading } from "./LoadingContext";
 
 type JobsContextType = {
   jobs: Job[];
@@ -16,26 +17,61 @@ const JobsContext = createContext<JobsContextType | undefined>(undefined);
 export const JobsProvider = ({ children }: { children: ReactNode }) => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const { user } = useAuth();
+  const { setLoading } = useLoading();
 
   // Fetch all jobs from API only once
   const refreshJobs = async () => {
-    const res = await api.get<Job[]>("/jobs/mine");
-    setJobs(res.data);
+    setLoading(true);
+    try {
+      const res = await api.get<Job[]>("/jobs/mine");
+      setJobs(res.data);
+    } catch (error) {
+      console.error("Failed to fetch jobs:", error);
+      setJobs([]); // Optional: clear jobs on error
+    } finally {
+      setLoading(false);
+    }
   };
 
   // useEffect(() => {
   //   refreshJobs();
   // }, []);
 
+  // useEffect(() => {
+  //   if (user) {
+  //     refreshJobs();
+  //   }
+  //   // Optionally: clear calls on logout
+  //   else {
+  //     setJobs([]);
+  //   }
+  // }, [user, refreshJobs]);
   useEffect(() => {
-      if (user) {
-        refreshJobs();
+    let isMounted = true;
+
+    const fetchJobs = async () => {
+      setLoading?.(true);
+      try {
+        const res = await api.get<Job[]>("/jobs/mine");
+        if (isMounted) setJobs(res.data);
+      } catch (error) {
+        console.error("Failed to fetch jobs:", error);
+        if (isMounted) setJobs([]);
+      } finally {
+        if (isMounted) setLoading?.(false);
       }
-      // Optionally: clear calls on logout
-      else {
-        setJobs([]);
-      }
-    }, [user]);
+    };
+
+    if (user) {
+      fetchJobs();
+    } else {
+      setJobs([]);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, setLoading]);
 
   // Cache update helpers
   const addJob = (job: Job) => setJobs(jobs => [job, ...jobs]);
