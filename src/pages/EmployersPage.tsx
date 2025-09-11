@@ -42,7 +42,7 @@ export default function EmployersPage() {
 
   return (
     <>
-      <div className="max-w-screen-md mx-auto p-4 sm:p-6 bg-white rounded shadow">
+      <div className="mx-auto p-4 sm:p-6 bg-white rounded shadow">
         <h1 className="text-2xl font-bold mb-4">Employers</h1>
 
         <button

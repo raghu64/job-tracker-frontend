@@ -69,7 +69,7 @@ export default function JobsPage() {
 
   return (
     <>
-      <div className="max-w-screen-lg mx-auto p-4 sm:p-6 bg-white rounded shadow">
+      <div className="mx-auto p-4 sm:p-6 bg-white rounded shadow">
         <h1 className="text-2xl font-bold mb-4">Jobs</h1>
 
         <div className="flex flex-col sm:flex-row justify-between mb-4 gap-2">

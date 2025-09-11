@@ -81,7 +81,7 @@ export default function CallsPage() {
   };
 
   return (
-    <div className="max-w-screen-md mx-auto p-4 sm:p-6 bg-white rounded shadow">
+    <div className="mx-auto p-4 sm:p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-4">Calls</h1>
 
       <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">

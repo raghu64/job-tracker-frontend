@@ -55,6 +55,7 @@ export default function JobDetailPage() {
     }
   };
 
+  console.log(job?.dateSubmitted)
   // if (loading) return <div className="p-4">Loading job details...</div>;
   // if (error) return <div className="p-4 text-red-600">{error}</div>;
   if (!job) return <div className="p-4">Job not found.</div>;
@@ -85,8 +86,8 @@ export default function JobDetailPage() {
           <span className="font-semibold">Status:</span> {job.status || "N/A"}
         </div>
         <div>
-          <span className="font-semibold">Date:</span>{" "}
-          {job.dateSubmitted ? new Date(job.dateSubmitted).toLocaleDateString() : "N/A"}
+          <span className="font-semibold">Date (YYYY-MM-DD):</span>{" "}
+          {job.dateSubmitted ? new Date(job.dateSubmitted).toISOString().split('T')[0] : "N/A"}
         </div>
         <div>
           <span className="font-semibold">Location:</span> {job.jobLocation || "N/A"}
