@@ -89,7 +89,7 @@ export default function JobsPage() {
           <input
             type="search"
             placeholder="Search jobs..."
-            className="input input-bordered w-full sm:w-64"
+            className="input w-full pl-4 sm:w-auto sm:flex-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-9 sm:h-15"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
