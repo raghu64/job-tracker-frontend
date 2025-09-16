@@ -1,899 +1,652 @@
-import React, { useState } from "react";
-import { useLoading } from "../contexts/LoadingContext";
-import api from "../api/api";
+import React, { useState, useMemo, useEffect } from "react";
+import { useJobs } from "../contexts/JobsContext";
+import { useCalls } from "../contexts/CallsContext";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  PointElement,
-  LineElement,
-  ChartData,
-  ChartOptions,
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+    ArcElement,
+    PointElement,
+    LineElement,
+    ChartData,
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
-import { Bar, Pie, Line, Doughnut } from 'react-chartjs-2';
+import { Line } from 'react-chartjs-2';
+import { DateTime } from 'luxon';
 
 // Register Chart.js components
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  PointElement,
-  LineElement,
-  ChartDataLabels
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+    ArcElement,
+    PointElement,
+    LineElement,
+    ChartDataLabels
 );
 
-type Duration = "today" | "week" | "month" | "custom";
-type ViewMode = "text" | "graph";
-type GraphType = "bar" | "pie" | "line" | "doughnut";
-type ColorScheme = "default" | "warm" | "cool" | "pastel" | "vibrant";
+type Duration = "today" | "yesterday" | "week" | "month" | "custom";
 
-interface ReportData {
-  totalJobs: number;
-  totalCalls: number;
-  jobsByMarketingTeam: { [key: string]: number };
-  callsByMarketingTeam: { [key: string]: number };
-  dateRange: {
-    from: string;
-    to: string;
-  };
+interface DailyBreakdown {
+    date: string;
+    jobs: number;
+    calls: number;
 }
 
+interface ReportData {
+    totalJobs: number;
+    totalCalls: number;
+    jobsByMarketingTeam: { [key: string]: number };
+    callsByMarketingTeam: { [key: string]: number };
+    dailyBreakdown: DailyBreakdown[];
+    dateRange: {
+        from: string;
+        to: string;
+    };
+}
+
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+console.log("User Time Zone: ", timeZone);
+
+const parseDateLuxon = (dateString: string, daysDiff: number = 0): Date => {
+    console.log(`Parsing date: ${dateString} with daysDiff: ${daysDiff}`);
+    const dt = DateTime.fromISO(dateString, { zone: timeZone }).minus({ days: daysDiff });
+    if (!dt.isValid) {
+        throw new Error('Invalid date format. Expected YYYY-MM-DD');
+    }
+    return dt.toJSDate();
+};
+
+// Helper function to check if a date is a weekday (Monday-Friday)
+const isWeekday = (date: Date): boolean => {
+    const day = date.getDay();
+    return day >= 1 && day <= 5; // 1 = Monday, 5 = Friday
+};
+
+// Helper function to generate daily breakdown
+const generateDailyBreakdown = (filteredJobs: any[], filteredCalls: any[], startDate: Date, endDate: Date): DailyBreakdown[] => {
+    const dailyData: DailyBreakdown[] = [];
+
+    // Create maps for quick lookup
+    const jobsByDate = new Map<string, number>();
+    const callsByDate = new Map<string, number>();
+
+    // Group jobs by date
+    filteredJobs.forEach(job => {
+        const jobDate = new Date(job.dateSubmitted);
+        if (isWeekday(jobDate)) {
+            const dateStr = jobDate.toISOString().split('T')[0];
+            jobsByDate.set(dateStr, (jobsByDate.get(dateStr) || 0) + 1);
+        }
+    });
+
+    // Group calls by date
+    filteredCalls.forEach(call => {
+        const callDate = new Date(call.date);
+        if (isWeekday(callDate)) {
+            const dateStr = callDate.toISOString().split('T')[0];
+            callsByDate.set(dateStr, (callsByDate.get(dateStr) || 0) + 1);
+        }
+    });
+
+    // Generate daily entries for the entire date range
+    const currentDate = new Date(startDate);
+    while (currentDate < endDate) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+
+        dailyData.push({
+            date: dateStr,
+            jobs: jobsByDate.get(dateStr) || 0,
+            calls: callsByDate.get(dateStr) || 0,
+        });
+
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return dailyData;
+};
+
 export default function ReportsPage() {
-  const [duration, setDuration] = useState<Duration>("today");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [reportData, setReportData] = useState<ReportData | null>(null);
-  const [error, setError] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("text");
-  const [graphType, setGraphType] = useState<GraphType>("bar");
-  const [colorScheme, setColorScheme] = useState<ColorScheme>("default");
-  const [showLegend, setShowLegend] = useState(false);
-  const [showDataLabels, setShowDataLabels] = useState(true);
-  const [showGrid, setShowGrid] = useState(true);
-  const [chartHeight, setChartHeight] = useState("384");
-  const [animationDuration, setAnimationDuration] = useState(1000);
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-  console.log("User Time Zone: ", timeZone);
-  
-  const { setLoading } = useLoading();
+    const [duration, setDuration] = useState<Duration>("today");
+    const [fromDate, setFromDate] = useState("");
+    const [toDate, setToDate] = useState("");
+    const [error, setError] = useState("");
+    const showLegend = false;
+    const showTitle = false;
+    const showDataLabels = true;
+    const showGrid = true;
+    const chartHeight = "384";
 
-  // Color schemes
-  const colorSchemes = {
-    default: [
-      'rgba(54, 162, 235, 0.8)',
-      'rgba(255, 99, 132, 0.8)',
-      'rgba(255, 205, 86, 0.8)',
-      'rgba(75, 192, 192, 0.8)',
-      'rgba(153, 102, 255, 0.8)',
-      'rgba(255, 159, 64, 0.8)',
-      'rgba(199, 199, 199, 0.8)',
-      'rgba(83, 102, 255, 0.8)',
-    ],
-    warm: [
-      'rgba(255, 99, 132, 0.8)',
-      'rgba(255, 159, 64, 0.8)',
-      'rgba(255, 205, 86, 0.8)',
-      'rgba(255, 99, 71, 0.8)',
-      'rgba(255, 140, 0, 0.8)',
-      'rgba(220, 20, 60, 0.8)',
-      'rgba(255, 69, 0, 0.8)',
-      'rgba(255, 215, 0, 0.8)',
-    ],
-    cool: [
-      'rgba(54, 162, 235, 0.8)',
-      'rgba(75, 192, 192, 0.8)',
-      'rgba(153, 102, 255, 0.8)',
-      'rgba(100, 149, 237, 0.8)',
-      'rgba(123, 104, 238, 0.8)',
-      'rgba(70, 130, 180, 0.8)',
-      'rgba(95, 158, 160, 0.8)',
-      'rgba(106, 90, 205, 0.8)',
-    ],
-    pastel: [
-      'rgba(255, 182, 193, 0.8)',
-      'rgba(221, 160, 221, 0.8)',
-      'rgba(173, 216, 230, 0.8)',
-      'rgba(152, 251, 152, 0.8)',
-      'rgba(255, 218, 185, 0.8)',
-      'rgba(250, 235, 215, 0.8)',
-      'rgba(230, 230, 250, 0.8)',
-      'rgba(255, 240, 245, 0.8)',
-    ],
-    vibrant: [
-      'rgba(255, 0, 255, 0.8)',
-      'rgba(0, 255, 255, 0.8)',
-      'rgba(255, 255, 0, 0.8)',
-      'rgba(255, 0, 0, 0.8)',
-      'rgba(0, 255, 0, 0.8)',
-      'rgba(0, 0, 255, 0.8)',
-      'rgba(255, 165, 0, 0.8)',
-      'rgba(128, 0, 128, 0.8)',
-    ]
-  };
+    // Get data from contexts
+    const { jobs } = useJobs();
+    const { calls } = useCalls();
 
-  const handleDurationChange = (newDuration: Duration) => {
-    setDuration(newDuration);
-    if (newDuration !== "custom") {
-      setFromDate("");
-      setToDate("");
-    }
-  };
 
-  const generateReport = async () => {
-    setError("");
-    setLoading(true);
 
-    try {
-      let params: any = { duration };
-      
-      if (duration === "custom") {
-        if (!fromDate || !toDate) {
-          setError("Please select both from and to dates for custom range");
-          setLoading(false);
-          return;
+
+
+
+
+
+    // Helper function to get date range
+    const getDateRange = (
+        duration: string,
+        customFrom: string | null = null,
+        customTo: string | null = null
+    ) => {
+        let startDate: Date, endDate: Date;
+
+        switch (duration) {
+            case 'today':
+                startDate = parseDateLuxon(DateTime.now().setZone(timeZone).toISODate());
+                endDate = parseDateLuxon(DateTime.now().setZone(timeZone).toISODate());
+                break;
+
+            case 'yesterday':
+                startDate = parseDateLuxon(DateTime.now().setZone(timeZone).toISODate(), 1);
+                endDate = parseDateLuxon(DateTime.now().setZone(timeZone).toISODate(), 1);
+                break;
+
+            case 'week':
+                startDate = parseDateLuxon(DateTime.now().setZone(timeZone).toISODate(), 6);
+                endDate = parseDateLuxon(DateTime.now().setZone(timeZone).toISODate());
+                break;
+
+            case 'month':
+                startDate = parseDateLuxon(DateTime.now().setZone(timeZone).toISODate(), 29);
+                endDate = parseDateLuxon(DateTime.now().setZone(timeZone).toISODate());
+                break;
+
+            case 'custom':
+                if (!customFrom || !customTo) {
+                    throw new Error('Custom date range requires both from and to dates');
+                }
+                startDate = parseDateLuxon(customFrom);
+                endDate = parseDateLuxon(customTo);
+                endDate.setHours(23, 59, 59, 999); // Include the entire end date
+                break;
+
+            default:
+                throw new Error('Invalid duration specified');
         }
-        params = { duration: "custom", fromDate, toDate };
-      }
-      params = {...params, timeZone };
 
-      const response = await api.get("/reports", { params });
-      setReportData(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to generate report");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Chart data functions
-  const getJobsChartData = (): ChartData<'bar', number[], string> | null => {
-    if (!reportData) return null;
-
-    const labels = Object.keys(reportData.jobsByMarketingTeam);
-    const data = Object.values(reportData.jobsByMarketingTeam);
-    const colors = colorSchemes[colorScheme];
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Jobs by Marketing Team',
-          data,
-          backgroundColor: colors.slice(0, labels.length),
-          borderColor: colors.slice(0, labels.length).map(color => color.replace('0.8', '1')),
-          borderWidth: 2,
-          hoverBackgroundColor: colors.slice(0, labels.length).map(color => color.replace('0.8', '0.9')),
-          hoverBorderWidth: 3,
-        } as any,
-      ],
-    };
-  };
-
-  const getCallsChartData = (): ChartData<'bar', number[], string> | null => {
-    if (!reportData) return null;
-
-    const labels = Object.keys(reportData.callsByMarketingTeam);
-    const data = Object.values(reportData.callsByMarketingTeam);
-    const colors = colorSchemes[colorScheme];
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Calls by Marketing Team',
-          data,
-          backgroundColor: colors.slice(0, labels.length),
-          borderColor: colors.slice(0, labels.length).map(color => color.replace('0.8', '1')),
-          borderWidth: 2,
-          hoverBackgroundColor: colors.slice(0, labels.length).map(color => color.replace('0.8', '0.9')),
-          hoverBorderWidth: 3,
-        } as any,
-      ],
-    };
-  };
-
-  const getLineJobsChartData = (): ChartData<'line', number[], string> | null => {
-    if (!reportData) return null;
-
-    const labels = Object.keys(reportData.jobsByMarketingTeam);
-    const data = Object.values(reportData.jobsByMarketingTeam);
-    const colors = colorSchemes[colorScheme];
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Jobs by Marketing Team',
-          data,
-          backgroundColor: colors.slice(0, labels.length),
-          borderColor: colors.slice(0, labels.length).map(color => color.replace('0.8', '1')),
-          borderWidth: 2,
-          pointBackgroundColor: colors.slice(0, labels.length),
-          pointBorderColor: '#fff',
-          pointHoverBackgroundColor: '#fff',
-          pointHoverBorderColor: colors.slice(0, labels.length).map(color => color.replace('0.8', '1')),
-        } as any,
-      ],
-    };
-  };
-
-  const getLineCallsChartData = (): ChartData<'line', number[], string> | null => {
-    if (!reportData) return null;
-
-    const labels = Object.keys(reportData.callsByMarketingTeam);
-    const data = Object.values(reportData.callsByMarketingTeam);
-    const colors = colorSchemes[colorScheme];
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Calls by Marketing Team',
-          data,
-          backgroundColor: colors.slice(0, labels.length),
-          borderColor: colors.slice(0, labels.length).map(color => color.replace('0.8', '1')),
-          borderWidth: 2,
-          pointBackgroundColor: colors.slice(0, labels.length),
-          pointBorderColor: '#fff',
-          pointHoverBackgroundColor: '#fff',
-          pointHoverBorderColor: colors.slice(0, labels.length).map(color => color.replace('0.8', '1')),
-        } as any,
-      ],
-    };
-  };
-
-  const getCombinedChartData = () => {
-    if (!reportData) return null;
-
-    const allTeams = Array.from(new Set([
-      ...Object.keys(reportData.jobsByMarketingTeam),
-      ...Object.keys(reportData.callsByMarketingTeam)
-    ]));
-
-    const jobsData = allTeams.map(team => reportData.jobsByMarketingTeam[team] || 0);
-    const callsData = allTeams.map(team => reportData.callsByMarketingTeam[team] || 0);
-
-    const baseDataset = {
-      Jobs: {
-        label: 'Jobs',
-        data: jobsData,
-        backgroundColor: 'rgba(54, 162, 235, 0.8)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 2,
-        hoverBackgroundColor: 'rgba(54, 162, 235, 0.9)',
-      },
-      Calls: {
-        label: 'Calls',
-        data: callsData,
-        backgroundColor: 'rgba(75, 192, 192, 0.8)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 2,
-        hoverBackgroundColor: 'rgba(75, 192, 192, 0.9)',
-      }
+        return { startDate, endDate };
     };
 
-    if (graphType === 'line') {
-      return {
-        labels: allTeams,
-        datasets: [
-          {
-            ...baseDataset.Jobs,
-            pointBackgroundColor: 'rgba(54, 162, 235, 1)',
-            pointBorderColor: '#fff',
-            pointHoverBackgroundColor: '#fff',
-            pointHoverBorderColor: 'rgba(54, 162, 235, 1)',
-          } as any,
-          {
-            ...baseDataset.Calls,
-            pointBackgroundColor: 'rgba(75, 192, 192, 1)',
-            pointBorderColor: '#fff',
-            pointHoverBackgroundColor: '#fff',
-            pointHoverBorderColor: 'rgba(75, 192, 192, 1)',
-          } as any,
-        ],
-      };
-    }
 
-    return {
-      labels: allTeams,
-      datasets: [baseDataset.Jobs as any, baseDataset.Calls as any],
-    };
-  };
 
-  // Fixed function to create pie/doughnut data with proper structure
-  const getPieChartData = (data: { [key: string]: number }, type: 'jobs' | 'calls') => {
-    const labels = Object.keys(data);
-    const values = Object.values(data);
-    const colors = colorSchemes[colorScheme];
+    // Compute report data using useMemo for performance
+    const reportData: ReportData | null = useMemo(() => {
+        if (!jobs || !calls) return null;
 
-    // If no data, return empty structure
-    if (labels.length === 0 || values.every(v => v === 0)) {
-      return {
-        labels: ['No Data'],
-        datasets: [
-          {
-            label: type === 'jobs' ? 'Jobs' : 'Calls',
-            data: [1],
-            backgroundColor: ['rgba(200, 200, 200, 0.5)'],
-            borderColor: ['rgba(200, 200, 200, 1)'],
-            borderWidth: 1,
-          },
-        ],
-      };
-    }
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: type === 'jobs' ? 'Jobs' : 'Calls',
-          data: values,
-          backgroundColor: colors.slice(0, labels.length),
-          borderColor: colors.slice(0, labels.length).map(color => color.replace('0.8', '1')),
-          borderWidth: 2,
-          hoverBackgroundColor: colors.slice(0, labels.length).map(color => color.replace('0.8', '0.9')),
-          hoverBorderWidth: 3,
-        },
-      ],
-    };
-  };
-
-  // Chart options
-  const getChartOptions = (title: string) => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: {
-      duration: animationDuration,
-    },
-    plugins: {
-      legend: {
-        display: showLegend,
-        position: 'top' as const,
-        labels: {
-          padding: 20,
-          usePointStyle: true,
-        },
-      },
-      title: {
-        display: true,
-        text: title,
-        font: {
-          size: 16,
-          weight: 'bold' as const,
-        },
-        padding: 20,
-      },
-      tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: 'white',
-        bodyColor: 'white',
-        borderColor: 'rgba(255, 255, 255, 0.2)',
-        borderWidth: 1,
-        cornerRadius: 6,
-        displayColors: true,
-      },
-      datalabels: {
-        display: showDataLabels,
-        color: 'black',
-        font: {
-          weight: 'bold' as const,
-          size: 11,
-        },
-        formatter: (value: number) => value.toString(),
-        anchor: 'end' as const,
-        align: 'top' as const,
-      },
-    },
-    scales: {
-      x: {
-        grid: {
-          display: showGrid,
-          color: 'rgba(0, 0, 0, 0.1)',
-        },
-        ticks: {
-          maxRotation: 45,
-        },
-      },
-      y: {
-        beginAtZero: true,
-        grid: {
-          display: showGrid,
-          color: 'rgba(0, 0, 0, 0.1)',
-        },
-        ticks: {
-          stepSize: 1,
-        },
-      },
-    },
-  });
-
-  // Fixed pie/doughnut options
-  const getPieOptions = (title: string) => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: {
-      duration: animationDuration,
-    },
-    plugins: {
-      legend: {
-        display: showLegend,
-        position: 'right' as const,
-        labels: {
-          padding: 15,
-          usePointStyle: true,
-          generateLabels: (chart: any) => {
-            const data = chart.data;
-            if (data.labels.length && data.datasets.length) {
-              return data.labels.map((label: string, i: number) => ({
-                text: label,
-                fillStyle: data.datasets[0].backgroundColor[i],
-                strokeStyle: data.datasets[0].borderColor[i],
-                lineWidth: data.datasets[0].borderWidth,
-                hidden: false,
-                index: i,
-              }));
+        try {
+            // If custom dates not set, return null to show the selection UI
+            if (duration === "custom" && (!fromDate || !toDate)) {
+                return null;
             }
-            return [];
-          },
-        },
-      },
-      title: {
-        display: true,
-        text: title,
-        font: {
-          size: 16,
-          weight: 'bold' as const,
-        },
-        padding: 20,
-      },
-      tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: 'white',
-        bodyColor: 'white',
-        callbacks: {
-          label: function(context: any) {
-            const label = context.label || '';
-            const value = context.raw || 0;
-            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
-            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
-            return `${label}: ${value} (${percentage}%)`;
-          }
+
+            const { startDate, endDate } = getDateRange(duration, fromDate || null, toDate || null);
+
+            // Filter jobs by date range
+            const filteredJobs = jobs.filter(job => {
+                const jobDate = DateTime.fromISO(job.dateSubmitted, { zone: timeZone }).toJSDate();
+                return jobDate >= startDate && jobDate <= endDate;
+            });
+
+            // Filter calls by date range
+            const filteredCalls = calls.filter(call => {
+                const callDate = DateTime.fromISO(call.date, { zone: timeZone }).toJSDate();
+                return callDate >= startDate && callDate <= endDate;
+            });
+
+            // Group jobs by marketing team
+            const jobsByMarketingTeam: { [key: string]: number } = filteredJobs.reduce((acc, job) => {
+                const team = job.marketingTeam || 'Not Specified';
+                acc[team] = (acc[team] || 0) + 1;
+                return acc;
+            }, {} as { [key: string]: number }); // Add explicit type here
+
+            // Group calls by marketing team
+            const callsByMarketingTeam: { [key: string]: number } = filteredCalls.reduce((acc, call) => {
+                const team = call.marketingTeam || 'Not Specified';
+                acc[team] = (acc[team] || 0) + 1;
+                return acc;
+            }, {} as { [key: string]: number }); // Add explicit type here
+
+
+            // Generate daily breakdown
+            const dailyBreakdown = generateDailyBreakdown(filteredJobs, filteredCalls, startDate, endDate);
+
+            return {
+                totalJobs: filteredJobs.length,
+                totalCalls: filteredCalls.length,
+                jobsByMarketingTeam,
+                callsByMarketingTeam,
+                dailyBreakdown,
+                dateRange: {
+                    from: startDate.toISOString(),
+                    to: endDate.toISOString()
+                }
+            };
+        } catch (error: any) {
+            console.error('Error computing report data:', error);
+            setError(error.message);
+            return null;
         }
-      },
-      datalabels: {
-        display: showDataLabels,
-        color: 'white',
-        font: {
-          weight: 'bold' as const,
-          size: 12,
-        },
-        formatter: (value: number, context: any) => {
-          if (!showDataLabels) return '';
-          const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
-          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
-          return `${percentage}%`;
-        },
-        textAlign: 'center' as const,
-      },
-    },
-  });
+    }, [jobs, calls, duration, fromDate, toDate]);
 
-  // Chart Icons component
-  const ChartIcon = ({ type }: { type: GraphType }) => {
-    const iconClass = "w-4 h-4 mr-1";
-    switch (type) {
-      case 'bar':
-        return <span className={iconClass}>📊</span>;
-      case 'pie':
-        return <span className={iconClass}>🥧</span>;
-      case 'line':
-        return <span className={iconClass}>📈</span>;
-      case 'doughnut':
-        return <span className={iconClass}>🍩</span>;
-      default:
-        return <span className={iconClass}>📊</span>;
+    const handleDurationChange = (newDuration: Duration) => {
+        setDuration(newDuration);
+        setError("");
+        if (newDuration !== "custom") {
+            setFromDate("");
+            setToDate("");
+        }
+    };
+
+    // Validate dates when they change
+    useEffect(() => {
+        if (duration === "custom" && fromDate && toDate) {
+            const start = parseDateLuxon(fromDate);
+            const end = parseDateLuxon(toDate);
+            if (start > end) {
+                setError("Start date must be before end date");
+            } else {
+                setError("");
+            }
+        } else {
+            setError("");
+        }
+    }, [fromDate, toDate, duration]);
+
+
+    // Timeline chart data
+    const getTimelineChartData = (): ChartData<'line', number[], string> | null => {
+        if (!reportData || !reportData.dailyBreakdown || reportData.dailyBreakdown.length === 0) return null;
+
+        const labels = reportData.dailyBreakdown.map(day => {
+            const date = new Date(day.date);
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+            });
+        });
+
+        const jobsData = reportData.dailyBreakdown.map(day => day.jobs);
+        const callsData = reportData.dailyBreakdown.map(day => day.calls);
+
+        return {
+            labels,
+            datasets: [
+                {
+                    label: 'Jobs per Day',
+                    data: jobsData,
+                    borderColor: 'rgba(37, 99, 235, 1)',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: 'rgba(37, 99, 235, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(37, 99, 235, 1)',
+                    tension: 0.4,
+                    fill: true,
+                } as any,
+                {
+                    label: 'Calls per Day',
+                    data: callsData,
+                    borderColor: 'rgba(22, 163, 74, 1)',
+                    backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: 'rgba(22, 163, 74, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(22, 163, 74, 1)',
+                    tension: 0.4,
+                    fill: true,
+                } as any,
+            ],
+        };
+    };
+
+    // Timeline chart options
+    const getTimelineOptions = () => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+            duration: 1000,
+        },
+        plugins: {
+            legend: {
+                display: showLegend,
+                position: 'top' as const,
+                labels: {
+                    padding: 30,
+                    usePointStyle: true,
+                },
+            },
+            title: {
+                display: showTitle,
+                text: 'Daily Activity Timeline',
+                font: {
+                    size: 18,
+                    weight: 'bold' as const,
+                },
+                padding: 20,
+            },
+            tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: 'white',
+                bodyColor: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                borderWidth: 1,
+                cornerRadius: 6,
+                displayColors: true,
+                callbacks: {
+                    title: function (context: any) {
+                        const dataIndex = context[0].dataIndex;
+                        const date = reportData?.dailyBreakdown[dataIndex]?.date;
+                        return date ? new Date(date).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        }) : '';
+                    },
+                    label: function (context: any) {
+                        return `${context.dataset.label}: ${context.raw}`;
+                    }
+                }
+            },
+            datalabels: {
+                display: showDataLabels,
+                color: 'black',
+                // backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                // borderColor: 'rgba(0, 0, 0, 0.2)',
+                // borderRadius: 4,
+                // borderWidth: 1,
+                font: {
+                    weight: 'bold' as const,
+                    size: 10,
+                },
+                formatter: (value: number) => value > 0 ? value.toString() : '',
+                padding: 4,
+                anchor: 'end' as const,
+                align: 'top' as const,
+            },
+        },
+        scales: {
+            x: {
+                grid: {
+                    display: showGrid,
+                    color: 'rgba(0, 0, 0, 0.1)',
+                },
+                ticks: {
+                    maxRotation: 45,
+                    font: {
+                        size: 11,
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Date',
+                    font: {
+                        size: 12,
+                        weight: 'bold' as const,
+                    }
+                }
+            },
+            y: {
+                beginAtZero: true,
+                grid: {
+                    display: showGrid,
+                    color: 'rgba(0, 0, 0, 0.1)',
+                },
+                ticks: {
+                    stepSize: 1,
+                    font: {
+                        size: 11,
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Count',
+                    font: {
+                        size: 12,
+                        weight: 'bold' as const,
+                    }
+                }
+            },
+        },
+        interaction: {
+            intersect: false,
+            mode: 'index' as const,
+        },
+    });
+
+    // Show loading if data is not available yet
+    if (!jobs || !calls) {
+        return (
+            <div className="w-full p-4 sm:p-6 max-w-7xl mx-auto">
+                <div className="flex items-center justify-center h-64">
+                    <div className="text-lg text-gray-600">Loading data...</div>
+                </div>
+            </div>
+        );
     }
-  };
 
-  return (
-    <div className="w-full p-4 sm:p-6 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8 text-gray-800">📊 Analytics Reports</h1>
+    return (
+        <div className="w-full p-4 sm:p-6 max-w-7xl mx-auto">
+            <h1 className="text-3xl font-bold mb-8 text-gray-800">📊 Report</h1>
 
-      {/* Duration Selection */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-6 text-gray-800">📅 Select Duration</h2>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          {["today", "week", "month", "custom"].map((dur) => (
-            <button
-              key={dur}
-              onClick={() => handleDurationChange(dur as Duration)}
-              className={`p-4 rounded-lg border-2 font-medium capitalize transition-all duration-200 ${
-                duration === dur
-                  ? "bg-blue-500 text-white border-blue-500 shadow-lg transform scale-105"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-300"
-              }`}
-            >
-              {dur === "week" ? "This Week" : dur === "month" ? "This Month" : dur}
-            </button>
-          ))}
-        </div>
+            {/* Duration Selection */}
+            <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <h2 className="text-xl font-semibold mb-6 text-gray-800">📅 Select Duration</h2>
 
-        {duration === "custom" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 p-4 bg-gray-50 rounded-lg">
-            <div>
-              <label className="block text-sm font-semibold mb-3 text-gray-700">📅 From Date</label>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-3 text-gray-700">📅 To Date</label>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              />
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={generateReport}
-          className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-8 py-4 rounded-lg hover:from-blue-600 hover:to-blue-700 font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-        >
-          🚀 Generate Report
-        </button>
-
-        {error && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-            ⚠️ {error}
-          </div>
-        )}
-      </div>
-
-      {/* Report Results */}
-      {reportData && (
-        <div className="space-y-8">
-          {/* View Mode and Chart Controls */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-              <h2 className="text-xl font-semibold text-gray-800">📈 Report Results</h2>
-              
-              <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-                {/* View Mode Selection */}
-                <div className="flex rounded-lg border-2 border-gray-300 overflow-hidden">
-                  <button
-                    onClick={() => setViewMode("text")}
-                    className={`px-6 py-3 font-semibold transition-colors ${
-                      viewMode === "text"
-                        ? "bg-blue-500 text-white"
-                        : "bg-white text-gray-700 hover:bg-blue-50"
-                    }`}
-                  >
-                    📊 Text View
-                  </button>
-                  <button
-                    onClick={() => setViewMode("graph")}
-                    className={`px-6 py-3 font-semibold transition-colors ${
-                      viewMode === "graph"
-                        ? "bg-blue-500 text-white"
-                        : "bg-white text-gray-700 hover:bg-blue-50"
-                    }`}
-                  >
-                    📈 Graph View
-                  </button>
-                </div>
-
-                {/* Graph Type Selection */}
-                {viewMode === "graph" && (
-                  <div className="flex rounded-lg border-2 border-gray-300 overflow-hidden">
-                    {(["bar", "pie", "line", "doughnut"] as GraphType[]).map((type) => (
-                      <button
-                        key={type}
-                        onClick={() => setGraphType(type)}
-                        className={`px-4 py-3 text-sm font-semibold transition-colors flex items-center ${
-                          graphType === type
-                            ? "bg-green-500 text-white"
-                            : "bg-white text-gray-700 hover:bg-green-50"
-                        }`}
-                      >
-                        <ChartIcon type={type} />
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
-                      </button>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+                    {["today", "yesterday", "week", "month", "custom"].map((dur) => (
+                        <button
+                            key={dur}
+                            onClick={() => handleDurationChange(dur as Duration)}
+                            className={`p-4 rounded-lg border-2 font-medium capitalize transition-all duration-200 ${duration === dur
+                                ? "bg-blue-500 text-white border-blue-500 shadow-lg transform scale-105"
+                                : "bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-300"
+                                }`}
+                        >
+                            {dur === "week" ? "This Week" : dur === "month" ? "This Month" : dur}
+                        </button>
                     ))}
-                  </div>
+                </div>
+
+                {duration === "custom" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 p-4 bg-gray-50 rounded-lg">
+                        <div>
+                            <label className="block text-sm font-semibold mb-3 text-gray-700">📅 From Date</label>
+                            <input
+                                type="date"
+                                value={fromDate}
+                                onChange={(e) => setFromDate(e.target.value)}
+                                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold mb-3 text-gray-700">📅 To Date</label>
+                            <input
+                                type="date"
+                                value={toDate}
+                                onChange={(e) => setToDate(e.target.value)}
+                                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            />
+                        </div>
+                    </div>
                 )}
-              </div>
+
+                {error && (
+                    <div className="mt-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+                        ⚠️ {error}
+                    </div>
+                )}
             </div>
 
-            {/* Enhanced Chart Controls */}
-            {viewMode === "graph" && (
-              <div className="mt-6 p-6 bg-gray-50 rounded-lg">
-                <h3 className="text-lg font-semibold mb-4 text-gray-800">🎛️ Chart Controls</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {/* Color Scheme */}
-                  <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-700">🎨 Color Scheme</label>
-                    <select
-                      value={colorScheme}
-                      onChange={(e) => setColorScheme(e.target.value as ColorScheme)}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="default">Default</option>
-                      <option value="warm">Warm</option>
-                      <option value="cool">Cool</option>
-                      <option value="pastel">Pastel</option>
-                      <option value="vibrant">Vibrant</option>
-                    </select>
-                  </div>
+            {/* Report Results - Show immediately if we have valid data */}
+            {reportData && (
+                <div className="space-y-8">
 
-                  {/* Chart Height */}
-                  <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-700">📏 Chart Height</label>
-                    <select
-                      value={chartHeight}
-                      onChange={(e) => setChartHeight(e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="256">Small (256px)</option>
-                      <option value="320">Medium (320px)</option>
-                      <option value="384">Large (384px)</option>
-                      <option value="448">X-Large (448px)</option>
-                    </select>
-                  </div>
 
-                  {/* Animation Duration */}
-                  <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-700">⏱️ Animation (ms)</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="3000"
-                      step="100"
-                      value={animationDuration}
-                      onChange={(e) => setAnimationDuration(parseInt(e.target.value))}
-                      className="w-full"
-                    />
-                    <div className="text-xs text-gray-500 mt-1">{animationDuration}ms</div>
-                  </div>
+                    {/* Daily Summary Stats */}
+                    {reportData?.dailyBreakdown && reportData.dailyBreakdown.length > 0 && (
+                        <div className="bg-white rounded-xl shadow-lg p-6">
+                            <h3 className="text-lg font-semibold mb-4 text-gray-800">📊 Daily Activity Summary</h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <div className="text-center">
+                                    <p className="text-2xl font-bold text-blue-600">
+                                        {Math.max(...reportData.dailyBreakdown.map(d => d.jobs))}
+                                    </p>
+                                    <p className="text-sm text-gray-600">Peak Jobs/Day</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-2xl font-bold text-green-600">
+                                        {Math.max(...reportData.dailyBreakdown.map(d => d.calls))}
+                                    </p>
+                                    <p className="text-sm text-gray-600">Peak Calls/Day</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-2xl font-bold text-purple-600">
+                                        {(reportData.totalJobs / reportData.dailyBreakdown.length).toFixed(1)}
+                                    </p>
+                                    <p className="text-sm text-gray-600">Avg Jobs/Day</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-2xl font-bold text-orange-600">
+                                        {(reportData.totalCalls / reportData.dailyBreakdown.length).toFixed(1)}
+                                    </p>
+                                    <p className="text-sm text-gray-600">Avg Calls/Day</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-                  {/* Toggle Options */}
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={showLegend}
-                        onChange={(e) => setShowLegend(e.target.checked)}
-                        className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <span className="text-sm font-medium text-gray-700">📋 Show Legend</span>
-                    </label>
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-8 text-white">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-2 opacity-90">Total Jobs</h3>
+                                    <p className="text-4xl font-bold">{reportData.totalJobs}</p>
+                                </div>
+                                <div className="text-6xl opacity-20">💼</div>
+                            </div>
+                            <p className="text-sm opacity-75 mt-4">
+                                📅 {DateTime.fromISO(reportData.dateRange.from, {zone: timeZone}).toFormat('MM/dd/yyyy')} to{" "}
+                                {DateTime.fromISO(reportData.dateRange.to, {zone: timeZone}).toFormat('MM/dd/yyyy')}
+                            </p>
+                        </div>
 
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={showDataLabels}
-                        onChange={(e) => setShowDataLabels(e.target.checked)}
-                        className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <span className="text-sm font-medium text-gray-700">🏷️ Show Data Labels</span>
-                    </label>
+                        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-8 text-white">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-2 opacity-90">Total Calls</h3>
+                                    <p className="text-4xl font-bold">{reportData.totalCalls}</p>
+                                </div>
+                                <div className="text-6xl opacity-20">📞</div>
+                            </div>
+                            <p className="text-sm opacity-75 mt-4">
+                                📅 {DateTime.fromISO(reportData.dateRange.from, {zone: timeZone}).toFormat('MM/dd/yyyy')} to{" "}
+                                {DateTime.fromISO(reportData.dateRange.to, {zone: timeZone}).toFormat('MM/dd/yyyy')}
+                            </p>
+                        </div>
+                    </div>
 
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={showGrid}
-                        onChange={(e) => setShowGrid(e.target.checked)}
-                        className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <span className="text-sm font-medium text-gray-700">📏 Show Grid</span>
-                    </label>
-                  </div>
+                    {/* Timeline Chart */}
+                    {reportData?.dailyBreakdown && reportData.dailyBreakdown.length > 0 && (
+                        <div className="space-y-8">
+                            <div className="bg-white rounded-xl shadow-lg p-8">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-xl font-semibold text-gray-800">📈 Daily Activity Timeline</h3>
+                                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                        <div className="flex items-center">
+                                            <div className="w-3 h-3 bg-blue-600 rounded-full mr-2"></div>
+                                            <span>Jobs</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
+                                            <span>Calls</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ height: `${parseInt(chartHeight) + 50}px` }}>
+                                    {getTimelineChartData() ? (
+                                        <Line
+                                            data={getTimelineChartData()!}
+                                            options={getTimelineOptions()}
+                                        />
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-gray-500">
+                                            📭 No timeline data available
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {/* Jobs and Calls by Marketing Team */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="bg-white rounded-xl shadow-lg p-8">
+                            <h3 className="text-xl font-semibold mb-6 text-gray-800 flex items-center">
+                                💼 Jobs by Marketing Team
+                            </h3>
+                            {Object.keys(reportData.jobsByMarketingTeam).length > 0 ? (
+                                <div className="space-y-4">
+                                    {Object.entries(reportData.jobsByMarketingTeam)
+                                        .sort(([, a], [, b]) => b - a)
+                                        .map(([team, count]) => (
+                                            <div key={team} className="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
+                                                <span className="text-gray-700 font-medium">{team || "Not Specified"}</span>
+                                                <span className="font-bold text-blue-600 text-xl">{count}</span>
+                                            </div>
+                                        ))}
+                                </div>
+                            ) : (
+                                <p className="text-gray-500 text-center py-8">📭 No jobs found for this period</p>
+                            )}
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-lg p-8">
+                            <h3 className="text-xl font-semibold mb-6 text-gray-800 flex items-center">
+                                📞 Calls by Marketing Team
+                            </h3>
+                            {Object.keys(reportData.callsByMarketingTeam).length > 0 ? (
+                                <div className="space-y-4">
+                                    {Object.entries(reportData.callsByMarketingTeam)
+                                        .sort(([, a], [, b]) => b - a)
+                                        .map(([team, count]) => (
+                                            <div key={team} className="flex justify-between items-center p-4 bg-green-50 rounded-lg">
+                                                <span className="text-gray-700 font-medium">{team || "Not Specified"}</span>
+                                                <span className="font-bold text-green-600 text-xl">{count}</span>
+                                            </div>
+                                        ))}
+                                </div>
+                            ) : (
+                                <p className="text-gray-500 text-center py-8">📭 No calls found for this period</p>
+                            )}
+                        </div>
+                    </div>
+
+
                 </div>
-              </div>
             )}
-          </div>
-
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-8 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2 opacity-90">Total Jobs</h3>
-                  <p className="text-4xl font-bold">{reportData.totalJobs}</p>
-                </div>
-                <div className="text-6xl opacity-20">💼</div>
-              </div>
-              <p className="text-sm opacity-75 mt-4">
-                📅 {new Date(reportData.dateRange.from).toLocaleDateString()} to{" "}
-                {new Date(reportData.dateRange.to).toLocaleDateString()}
-              </p>
-            </div>
-            
-            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-8 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2 opacity-90">Total Calls</h3>
-                  <p className="text-4xl font-bold">{reportData.totalCalls}</p>
-                </div>
-                <div className="text-6xl opacity-20">📞</div>
-              </div>
-              <p className="text-sm opacity-75 mt-4">
-                📅 {new Date(reportData.dateRange.from).toLocaleDateString()} to{" "}
-                {new Date(reportData.dateRange.to).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-
-          {/* Text View */}
-          {viewMode === "text" && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-white rounded-xl shadow-lg p-8">
-                <h3 className="text-xl font-semibold mb-6 text-gray-800 flex items-center">
-                  💼 Jobs by Marketing Team
-                </h3>
-                {Object.keys(reportData.jobsByMarketingTeam).length > 0 ? (
-                  <div className="space-y-4">
-                    {Object.entries(reportData.jobsByMarketingTeam)
-                      .sort(([,a], [,b]) => b - a)
-                      .map(([team, count]) => (
-                      <div key={team} className="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
-                        <span className="text-gray-700 font-medium">{team || "Not Specified"}</span>
-                        <span className="font-bold text-blue-600 text-xl">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center py-8">📭 No jobs found for this period</p>
-                )}
-              </div>
-
-              <div className="bg-white rounded-xl shadow-lg p-8">
-                <h3 className="text-xl font-semibold mb-6 text-gray-800 flex items-center">
-                  📞 Calls by Marketing Team
-                </h3>
-                {Object.keys(reportData.callsByMarketingTeam).length > 0 ? (
-                  <div className="space-y-4">
-                    {Object.entries(reportData.callsByMarketingTeam)
-                      .sort(([,a], [,b]) => b - a)
-                      .map(([team, count]) => (
-                      <div key={team} className="flex justify-between items-center p-4 bg-green-50 rounded-lg">
-                        <span className="text-gray-700 font-medium">{team || "Not Specified"}</span>
-                        <span className="font-bold text-green-600 text-xl">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center py-8">📭 No calls found for this period</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Graph View */}
-          {viewMode === "graph" && (
-            <div className="space-y-8">
-              {/* Combined Chart */}
-              <div className="bg-white rounded-xl shadow-lg p-8">
-                <h3 className="text-xl font-semibold mb-6 text-gray-800">📊 Jobs vs Calls by Marketing Team</h3>
-                <div style={{ height: `${chartHeight}px` }}>
-                  {graphType === "bar" && getCombinedChartData() && (
-                    <Bar 
-                      data={getCombinedChartData()!} 
-                      options={getChartOptions("Jobs vs Calls Comparison")} 
-                    />
-                  )}
-                  {graphType === "line" && getCombinedChartData() && (
-                    <Line 
-                      data={getCombinedChartData()!} 
-                      options={getChartOptions("Jobs vs Calls Trend")} 
-                    />
-                  )}
-                  {(graphType === "pie" || graphType === "doughnut") && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
-                      <div className="flex flex-col h-full">
-                        <h4 className="text-lg font-semibold mb-4 text-center text-gray-800">💼 Jobs Distribution</h4>
-                        <div className="flex-1 min-h-0">
-                          {Object.keys(reportData.jobsByMarketingTeam).length > 0 ? (
-                            <>
-                              {graphType === "pie" && (
-                                <Pie 
-                                  data={getPieChartData(reportData.jobsByMarketingTeam, 'jobs')} 
-                                  options={getPieOptions('Jobs by Marketing Team')} 
-                                />
-                              )}
-                              {graphType === "doughnut" && (
-                                <Doughnut 
-                                  data={getPieChartData(reportData.jobsByMarketingTeam, 'jobs')} 
-                                  options={getPieOptions('Jobs by Marketing Team')} 
-                                />
-                              )}
-                            </>
-                          ) : (
-                            <div className="flex items-center justify-center h-full text-gray-500">
-                              📭 No jobs data available
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex flex-col h-full">
-                        <h4 className="text-lg font-semibold mb-4 text-center text-gray-800">📞 Calls Distribution</h4>
-                        <div className="flex-1 min-h-0">
-                          {Object.keys(reportData.callsByMarketingTeam).length > 0 ? (
-                            <>
-                              {graphType === "pie" && (
-                                <Pie 
-                                  data={getPieChartData(reportData.callsByMarketingTeam, 'calls')} 
-                                  options={getPieOptions('Calls by Marketing Team')} 
-                                />
-                              )}
-                              {graphType === "doughnut" && (
-                                <Doughnut 
-                                  data={getPieChartData(reportData.callsByMarketingTeam, 'calls')} 
-                                  options={getPieOptions('Calls by Marketing Team')} 
-                                />
-                              )}
-                            </>
-                          ) : (
-                            <div className="flex items-center justify-center h-full text-gray-500">
-                              📭 No calls data available
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Individual Charts for Bar/Line only */}
-              {!["pie", "doughnut"].includes(graphType) && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="bg-white rounded-xl shadow-lg p-8">
-                    <h3 className="text-xl font-semibold mb-6 text-gray-800">💼 Jobs by Marketing Team</h3>
-                    <div style={{ height: `${parseInt(chartHeight) * 0.75}px` }}>
-                      {graphType === "bar" && getJobsChartData() && (
-                        <Bar data={getJobsChartData()!} options={getChartOptions("Jobs Distribution")} />
-                      )}
-                      {graphType === "line" && getLineJobsChartData() && (
-                        <Line data={getLineJobsChartData()!} options={getChartOptions("Jobs Trend")} />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl shadow-lg p-8">
-                    <h3 className="text-xl font-semibold mb-6 text-gray-800">📞 Calls by Marketing Team</h3>
-                    <div style={{ height: `${parseInt(chartHeight) * 0.75}px` }}>
-                      {graphType === "bar" && getCallsChartData() && (
-                        <Bar data={getCallsChartData()!} options={getChartOptions("Calls Distribution")} />
-                      )}
-                      {graphType === "line" && getLineCallsChartData() && (
-                        <Line data={getLineCallsChartData()!} options={getChartOptions("Calls Trend")} />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
-      )}
-    </div>
-  );
+    );
 }
