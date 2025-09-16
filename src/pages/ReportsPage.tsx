@@ -500,10 +500,37 @@ export default function ReportsPage() {
                 )}
             </div>
 
+
             {/* Report Results - Show immediately if we have valid data */}
             {reportData && (
                 <div className="space-y-8">
+                    <div className="border-b border-gray-200 pb-4 mb-6">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-gray-800">Summary</h3>
+                            <div className="text-base font-semibold text-gray-800">
+                                📅 {DateTime.fromISO(reportData.dateRange.from, { zone: timeZone }).toFormat('MM/dd/yyyy')} - {DateTime.fromISO(reportData.dateRange.to, { zone: timeZone }).toFormat('MM/dd/yyyy')}
+                            </div>
+                        </div>
+                    </div>
 
+                    {/* Summary Cards */}
+                    <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
+                        <div className="flex-1 bg-blue-500 text-white text-center py-2 px-3 rounded-md">
+                            <div className="flex items-center justify-center gap-2">
+                                <span className="text-lg font-bold">{reportData.totalJobs}</span>
+                                <span className="text-lg opacity-75">Jobs</span>
+                                <span className="text-lg opacity-50">💼</span>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 bg-green-500 text-white text-center py-2 px-3 rounded-md">
+                            <div className="flex items-center justify-center gap-2">
+                                <span className="text-lg font-bold">{reportData.totalCalls}</span>
+                                <span className="text-lg opacity-75">Calls</span>
+                                <span className="text-lg opacity-50">📞</span>
+                            </div>
+                        </div>
+                    </div>
 
                     {/* Daily Summary Stats */}
                     {reportData?.dailyBreakdown && reportData.dailyBreakdown.length > 0 && (
@@ -537,37 +564,6 @@ export default function ReportsPage() {
                             </div>
                         </div>
                     )}
-
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-8 text-white">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold mb-2 opacity-90">Total Jobs</h3>
-                                    <p className="text-4xl font-bold">{reportData.totalJobs}</p>
-                                </div>
-                                <div className="text-6xl opacity-20">💼</div>
-                            </div>
-                            <p className="text-sm opacity-75 mt-4">
-                                📅 {DateTime.fromISO(reportData.dateRange.from, {zone: timeZone}).toFormat('MM/dd/yyyy')} to{" "}
-                                {DateTime.fromISO(reportData.dateRange.to, {zone: timeZone}).toFormat('MM/dd/yyyy')}
-                            </p>
-                        </div>
-
-                        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-8 text-white">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold mb-2 opacity-90">Total Calls</h3>
-                                    <p className="text-4xl font-bold">{reportData.totalCalls}</p>
-                                </div>
-                                <div className="text-6xl opacity-20">📞</div>
-                            </div>
-                            <p className="text-sm opacity-75 mt-4">
-                                📅 {DateTime.fromISO(reportData.dateRange.from, {zone: timeZone}).toFormat('MM/dd/yyyy')} to{" "}
-                                {DateTime.fromISO(reportData.dateRange.to, {zone: timeZone}).toFormat('MM/dd/yyyy')}
-                            </p>
-                        </div>
-                    </div>
 
                     {/* Timeline Chart */}
                     {reportData?.dailyBreakdown && reportData.dailyBreakdown.length > 0 && (
