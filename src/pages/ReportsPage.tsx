@@ -62,6 +62,8 @@ export default function ReportsPage() {
   const [showGrid, setShowGrid] = useState(true);
   const [chartHeight, setChartHeight] = useState("384");
   const [animationDuration, setAnimationDuration] = useState(1000);
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  console.log("User Time Zone: ", timeZone);
   
   const { setLoading } = useLoading();
 
@@ -142,6 +144,7 @@ export default function ReportsPage() {
         }
         params = { duration: "custom", fromDate, toDate };
       }
+      params = {...params, timeZone };
 
       const response = await api.get("/reports", { params });
       setReportData(response.data);
