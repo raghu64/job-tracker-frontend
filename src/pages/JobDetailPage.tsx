@@ -118,14 +118,22 @@ export default function JobDetailPage() {
       {job.jobDescription && (
         <section className="mb-6 prose max-w-full">
           <h2 className="text-xl font-semibold mb-2">Description</h2>
-          <p>{job.jobDescription}</p>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+            <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 leading-relaxed">
+              {job.jobDescription}
+            </pre>
+          </div>
         </section>
       )}
 
       {job.notes && (
         <section className="mb-6 prose max-w-full">
           <h2 className="text-xl font-semibold mb-2">Notes</h2>
-          <p>{job.notes}</p>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+            <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 leading-relaxed">
+              {job.notes}
+            </pre>
+          </div>
         </section>
       )}
 
