@@ -23,6 +23,9 @@ export default function Layout() {
           <Link to="/employers" className="hover:underline">
             Employers
           </Link>
+          <Link to="/reports" className="hover:underline">
+            Reports
+          </Link>
           <LogoutButton />
         </nav>
       </header>

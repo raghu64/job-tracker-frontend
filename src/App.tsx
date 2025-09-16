@@ -6,6 +6,7 @@ import JobDetailPage from "./pages/JobDetailPage";
 import EmployersPage from "./pages/EmployersPage";
 import CallsPage from "./pages/CallsPage";
 import LoginPage from "./pages/LoginPage";
+import ReportsPage from "./pages/ReportsPage";
 // import RegisterPage from "./pages/RegisterPage";
 // import NotFound from "./pages/NotFound";
 import { useAuth } from "./auth/useAuth";
@@ -48,6 +49,7 @@ const App: React.FC = () => (
                 <Route path="jobs/:id" element={<JobDetailPage />} />
                 <Route path="employers" element={<EmployersPage />} />
                 <Route path="calls" element={<CallsPage />} />
+                <Route path="reports" element={<ReportsPage />} />
               </Route>
               {/* Not found fallback */}
               <Route path="*" element={<Navigate to="/login" replace />} />
