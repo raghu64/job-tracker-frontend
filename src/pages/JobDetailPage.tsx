@@ -6,6 +6,7 @@ import { Job } from "../types/models";
 import { useJobs } from "../contexts/JobsContext";
 import { useEmployers } from "../contexts/EmployersContext";
 import { useLoading } from "../contexts/LoadingContext";
+import MarkdownDisplay from "../components/MarkdownDisplay";
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -119,9 +120,7 @@ export default function JobDetailPage() {
         <section className="mb-6 prose max-w-full">
           <h2 className="text-xl font-semibold mb-2">Description</h2>
           <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 leading-relaxed">
-              {job.jobDescription}
-            </pre>
+            <MarkdownDisplay content={job.jobDescription} />
           </div>
         </section>
       )}
@@ -130,9 +129,7 @@ export default function JobDetailPage() {
         <section className="mb-6 prose max-w-full">
           <h2 className="text-xl font-semibold mb-2">Notes</h2>
           <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 leading-relaxed">
-              {job.notes}
-            </pre>
+            <MarkdownDisplay content={job.notes} />
           </div>
         </section>
       )}
