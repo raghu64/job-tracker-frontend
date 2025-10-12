@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import api from "../api/api";
 import { Employer } from "../types/models";
 import { useLoading } from "./LoadingContext";
+import { useAuth } from "../auth/useAuth";
 
 type EmployersContextType = {
   employers: Employer[];
@@ -16,29 +17,29 @@ const EmployersContext = createContext<EmployersContextType | undefined>(undefin
 export function EmployersProvider({ children }: { children: ReactNode }) {
   const [employers, setEmployers] = useState<Employer[]>([]);
   const { setLoading } = useLoading();
+  const { user } = useAuth();
+
+  const fetchEmployers = async () => {
+    if (!user) {
+      setEmployers([]);
+      return;
+    }
+
+    setLoading?.(true);
+    try {
+      const res = await api.get<Employer[]>("/employers");
+      setEmployers(res.data);
+    } catch (error) {
+      console.error("Failed to fetch employers:", error);
+      setEmployers([]);
+    } finally {
+      setLoading?.(false);
+    }
+  };
 
   useEffect(() => {
-    let isMounted = true;
-
-    const fetchEmployers = async () => {
-      setLoading?.(true);
-      try {
-        const res = await api.get<Employer[]>("/employers");
-        if (isMounted) setEmployers(res.data);
-      } catch (error) {
-        console.error("Failed to fetch employers:", error);
-        if (isMounted) setEmployers([]);
-      } finally {
-        if (isMounted) setLoading?.(false);
-      }
-    };
-
     fetchEmployers();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [setLoading]);
+  }, [user]); // Re-fetch when auth user changes
 //   useEffect(() => {
 //     refreshEmployers();
 //   }, []);

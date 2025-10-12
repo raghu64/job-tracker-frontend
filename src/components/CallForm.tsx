@@ -12,7 +12,7 @@ type Props = {
   jobs?: Job[]
 };
 
-const initialCall: Call = { jobId: "", name: "", vendor: "", phoneNumber: "", date: "", employerId: "" };
+const initialCall: Call = { jobId: "", name: "", vendor: "", phoneNumber: "", date: new Date().toISOString().split('T')[0], employerId: "" };
 
 
 export default function CallForm({ callToEdit, jobs, onSuccess, onCancel, employerOptions }: Props) {

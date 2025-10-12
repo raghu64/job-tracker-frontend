@@ -38,6 +38,12 @@ export default function JobDetailPage() {
     closeEditModal();
   };
 
+  /**
+   * The function `handleDelete` is an asynchronous function that confirms deletion of a job, sends a
+   * delete request to the API, and handles success or failure accordingly.
+   * @returns The `handleDelete` function is returning a Promise because it is an async function. The
+   * function will return a Promise that resolves to undefined.
+   */
   const handleDelete = async () => {
     if (!id) return;
     if (!window.confirm("Are you sure you want to delete this job?")) return;

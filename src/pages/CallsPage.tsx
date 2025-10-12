@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useFormSidebar } from "../contexts/FormSidebarContext";
 
 import api from "../api/api";
 
@@ -18,9 +19,8 @@ import { useLoading } from "../contexts/LoadingContext";
 
 export default function CallsPage() {
 
-  const [editingCall, setEditingCall] = useState<Call | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const { setEditingCall, openCallForm } = useFormSidebar();
+  const [search, setSearch] = useState<string>("");
   const [sortField, setSortField] = useState<keyof Call>("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -46,7 +46,7 @@ export default function CallsPage() {
         .toLowerCase()
         .includes(search.toLowerCase())
     )
-    .sort((a, b) => {
+    .sort((a: Call, b: Call) => {
       const x = String(a[sortField] ?? "");
       const y = String(b[sortField] ?? "");
       if (x === y) return 0;
@@ -54,21 +54,15 @@ export default function CallsPage() {
       return x < y ? 1 : -1;
     });
 
-  const handleAddClick = () => setModalOpen(true);
-
-  const handleFormSuccess = () => {
-    setModalOpen(false);
-    refreshCalls();
+  const handleAddClick = () => {
+    setEditingCall(undefined);
+    openCallForm();
   };
 
-  const handleFormCancel = () => {
-    setModalOpen(false);
-    setEditingCall(null);
-  }
-
+  // Form success/cancel handled in Layout via context
   const handleEdit = (call: Call) => {
     setEditingCall(call);
-    setModalOpen(true);
+    openCallForm();
   };
 
   const handleDelete = async (id: string) => {
@@ -81,7 +75,7 @@ export default function CallsPage() {
   };
 
   return (
-    <div className="mx-auto p-4 sm:p-6 bg-white rounded shadow">
+    <div className="mx-auto p-4 sm:p-6 bg-white rounded shadow h-full">
       <h1 className="text-2xl font-bold mb-4">Calls</h1>
 
       <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
@@ -109,7 +103,7 @@ export default function CallsPage() {
           sortOrder={sortOrder}
           onSort={(field: keyof Call) => {
             if (sortField === field)
-              setSortOrder((order) => (order === "asc" ? "desc" : "asc"));
+              setSortOrder((order: "asc" | "desc") => (order === "asc" ? "desc" : "asc"));
             else {
               setSortField(field);
               setSortOrder("asc");
@@ -120,19 +114,7 @@ export default function CallsPage() {
         />
       </div>
 
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
-          <div className="bg-white rounded shadow-lg w-full max-w-lg p-6 max-h-[80vh] overflow-auto relative">
-            <CallForm
-              employerOptions={employers.map((e) => ({ value: e._id!, label: e.name }))}
-              callToEdit={editingCall || undefined}
-              onSuccess={handleFormSuccess}
-              onCancel={handleFormCancel}
-              jobs={jobs}
-            />
-          </div>
-        </div>
-      )}
+      {/* Sidebar form rendering handled in Layout */}
     </div>
   );
 }

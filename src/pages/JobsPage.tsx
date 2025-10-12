@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useFormSidebar } from "../contexts/FormSidebarContext";
 import api from "../api/api";
 import JobList from "../components/JobList";
 import JobForm from "../components/JobForm";
@@ -12,9 +13,8 @@ export default function JobsPage() {
 
   // const [employers, setEmployers] = useState([]);
 
-  const [editingJob, setEditingJob] = useState<Job | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const { setEditingJob, openJobForm } = useFormSidebar();
+  const [search, setSearch] = useState<string>("");
   const [sortField, setSortField] = useState<keyof Job>("dateSubmitted");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -33,7 +33,7 @@ export default function JobsPage() {
         .toLowerCase()
         .includes(search.toLowerCase())
     )
-    .sort((a, b) => {
+    .sort((a: Job, b: Job) => {
       const x = String(a[sortField] ?? "");
       const y = String(b[sortField] ?? "");
       if (x === y) return 0;
@@ -41,21 +41,15 @@ export default function JobsPage() {
       return x < y ? 1 : -1;
     });
 
-  const handleAddClick = () => setModalOpen(true);
-
-  const handleFormSuccess = () => {
-    setModalOpen(false);
-    refreshJobs();
+  const handleAddClick = () => {
+    setEditingJob(undefined);
+    openJobForm();
   };
 
-  const handleFormCancel = () => {
-    setModalOpen(false);
-    setEditingJob(null);
-  }
-
+  // Form success/cancel handled in Layout via context
   const handleEdit = (job: Job) => {
     setEditingJob(job);
-    setModalOpen(true);
+    openJobForm();
   };
 
   const handleDelete = async (id: string) => {
@@ -68,55 +62,42 @@ export default function JobsPage() {
   };
 
   return (
-    <>
-      <div className="mx-auto p-4 sm:p-6 bg-white rounded shadow">
-        <h1 className="text-2xl font-bold mb-4">Jobs</h1>
+    <div className="mx-auto p-4 sm:p-6 bg-white rounded shadow h-full">
+      <h1 className="text-2xl font-bold mb-4">Jobs</h1>
 
-        <div className="flex flex-col sm:flex-row justify-between mb-4 gap-2">
-          <input
-            type="search"
-            placeholder="Search jobs..."
-            className="input w-full pl-4 sm:w-auto sm:flex-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-9 sm:h-15"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <button 
-            onClick={handleAddClick} 
-            className="bg-blue-700 text-white px-4 py-2 rounded font-semibold hover:bg-blue-800 transition btn btn-primary w-full sm:w-auto">
-            + Add Job
-          </button>
-        </div>
-
-        <JobList
-          jobs={sortedJobs}
-          employers={employers}
-          sortField={sortField}
-          sortOrder={sortOrder}
-          onSort={(field: keyof Job) => {
-            if (sortField === field)
-              setSortOrder((order) => (order === "asc" ? "desc" : "asc"));
-            else {
-              setSortField(field);
-              setSortOrder("asc");
-            }
-          }}
-          onDelete={handleDelete}
-          onEdit={handleEdit}
+      <div className="flex flex-col sm:flex-row justify-between mb-4 gap-2">
+        <input
+          type="search"
+          placeholder="Search jobs..."
+          className="input w-full pl-4 sm:w-auto sm:flex-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-9 sm:h-15"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
         />
+        <button 
+          onClick={handleAddClick} 
+          className="bg-blue-700 text-white px-4 py-2 rounded font-semibold hover:bg-blue-800 transition btn btn-primary w-full sm:w-auto">
+          + Add Job
+        </button>
       </div>
 
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
-          <div className="bg-white rounded shadow-lg w-full max-w-xl p-6 max-h-[80vh] overflow-auto relative">
-            <JobForm
-              jobToEdit={editingJob || undefined}
-              employerOptions={employers.map((e) => ({ value: e._id!, label: e.name }))}
-              onSuccess={handleFormSuccess}
-              onCancel={handleFormCancel}
-            />
-          </div>
-        </div>
-      )}
-    </>
+      <JobList
+        jobs={sortedJobs}
+        employers={employers}
+        sortField={sortField}
+        sortOrder={sortOrder}
+        onSort={(field: keyof Job) => {
+          if (sortField === field)
+            setSortOrder((order: "asc" | "desc") => (order === "asc" ? "desc" : "asc"));
+          else {
+            setSortField(field);
+            setSortOrder("asc");
+          }
+        }}
+        onDelete={handleDelete}
+        onEdit={handleEdit}
+      />
+
+      {/* Sidebar form rendering handled in Layout */}
+    </div>
   );
 }
