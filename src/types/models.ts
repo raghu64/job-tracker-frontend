@@ -9,6 +9,7 @@ export interface Job {
   endClient: string;
   employerId?: string;
   dateSubmitted?: string;
+  isInterview?: boolean;
   jobDescription?: string;
   marketingTeam?: string;
   hourlyRate?: number;

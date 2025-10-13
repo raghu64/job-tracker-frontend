@@ -83,6 +83,17 @@ export default function JobForm({ onSuccess, employerOptions, jobToEdit, onCance
         onChange={e => setField("marketingTeam", e.target.value)} placeholder="Marketing Team" />
       <input className="input input-bordered w-full" name="hourlyRate" value={job.hourlyRate}
         onChange={e => setField("hourlyRate", e.target.value)} placeholder="Hourly Rate" />
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="isInterview"
+          name="isInterview"
+          checked={job.isInterview || false}
+          onChange={e => setField("isInterview", e.target.checked)}
+          className="checkbox"
+        />
+        <label htmlFor="isInterview" className="cursor-pointer">Has Interview</label>
+      </div>
       <div className="flex gap-2">
         <button type="submit" className="bg-blue-800 text-white px-4 py-2 rounded hover:bg-blue-700">
           {jobToEdit ? "Update" : "Add"} Job

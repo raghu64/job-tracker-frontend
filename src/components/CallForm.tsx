@@ -78,7 +78,11 @@ export default function CallForm({ callToEdit, jobs, onSuccess, onCancel, employ
         className="input input-bordered w-full"
       >
         <option value="">Select a job</option>
-        {jobs?.map(j => (
+        {jobs?.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;  // Descending order
+        }).map(j => (
           <option key={j._id} value={j._id}>{j.title} - {j.jobLocation}</option>
         ))}
       </select>

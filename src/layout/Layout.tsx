@@ -32,6 +32,7 @@ export default function Layout() {
           <Link to="/jobs" className="hover:underline">Jobs</Link>
           <Link to="/calls" className="hover:underline">Calls</Link>
           <Link to="/employers" className="hover:underline">Employers</Link>
+          <Link to="/interviews" className="hover:underline">Interviews</Link>
           <Link to="/reports" className="hover:underline">Reports</Link>
           {/* <button
             onClick={() => { setEditingJob(undefined); openJobForm(); }}
