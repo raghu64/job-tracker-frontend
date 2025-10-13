@@ -34,18 +34,33 @@ export default function Layout() {
           <Link to="/employers" className="hover:underline">Employers</Link>
           <Link to="/interviews" className="hover:underline">Interviews</Link>
           <Link to="/reports" className="hover:underline">Reports</Link>
-          {/* <button
+          <button
             onClick={() => { setEditingJob(undefined); openJobForm(); }}
-            className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition"
+            className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition hidden sm:block"
           >
             + Add Job
           </button>
           <button
             onClick={() => { setEditingCall(undefined); openCallForm(); }}
-            className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
+            className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition hidden sm:block"
           >
             + Add Call
-          </button> */}
+          </button>
+          {/* Mobile buttons */}
+          <div className="sm:hidden flex space-x-2">
+            <button
+              onClick={() => { setEditingJob(undefined); openJobForm(); }}
+              className="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-blue-700 transition text-lg font-bold"
+            >
+              +
+            </button>
+            <button
+              onClick={() => { setEditingCall(undefined); openCallForm(); }}
+              className="bg-green-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-green-700 transition text-lg font-bold"
+            >
+              +
+            </button>
+          </div>
           <LogoutButton />
         </nav>
       </header>
@@ -55,9 +70,10 @@ export default function Layout() {
           {loading && <LoadingScreen />}
           <Outlet />
         </main>
+        
+        {/* Desktop Sidebar */}
         {sidebarOpen && (
-          <aside className={`bg-white shadow-lg border-l ${sidebarWidth} transition-all duration-300 ease-in-out fixed right-0 top-[65px] bottom-[57px] overflow-hidden`}>
-            {/* Sidebar content: render JobForm and/or CallForm based on context */}
+          <aside className={`bg-white shadow-lg border-l ${sidebarWidth} transition-all duration-300 ease-in-out fixed right-0 top-[65px] bottom-[57px] overflow-hidden hidden sm:block`}>
             <div className="absolute inset-0">
               {state.jobFormOpen && state.callFormOpen ? (
                 <div className="h-full flex flex-col">
@@ -109,6 +125,43 @@ export default function Layout() {
               ) : null}
             </div>
           </aside>
+        )}
+
+        {/* Mobile Modal */}
+        {sidebarOpen && (
+          <div className="sm:hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center pt-4">
+            <div className="bg-white rounded-lg shadow-lg w-[95%] max-h-[90vh] overflow-hidden">
+              <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
+                <h2 className="text-lg font-semibold">
+                  {state.jobFormOpen ? "Add Job" : "Add Call"}
+                </h2>
+                <button
+                  onClick={state.jobFormOpen ? closeJobForm : closeCallForm}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto">
+                {state.jobFormOpen ? (
+                  <JobForm
+                    jobToEdit={state.editingJob}
+                    employerOptions={employers.map((e) => ({ value: e._id!, label: e.name }))}
+                    onSuccess={closeJobForm}
+                    onCancel={closeJobForm}
+                  />
+                ) : state.callFormOpen ? (
+                  <CallForm
+                    callToEdit={state.editingCall}
+                    employerOptions={employers.map((e) => ({ value: e._id!, label: e.name }))}
+                    jobs={jobs}
+                    onSuccess={closeCallForm}
+                    onCancel={closeCallForm}
+                  />
+                ) : null}
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
