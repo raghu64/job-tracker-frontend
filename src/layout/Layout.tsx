@@ -75,9 +75,9 @@ export default function Layout() {
         {sidebarOpen && (
           <aside className={`bg-white shadow-lg border-l ${sidebarWidth} transition-all duration-300 ease-in-out fixed right-0 top-[65px] bottom-[57px] overflow-hidden hidden sm:block`}>
             <div className="absolute inset-0">
-              {state.jobFormOpen && state.callFormOpen ? (
-                <div className="h-full flex flex-col">
-                  <div className="flex-none h-1/2 border-b border-gray-200">
+              <div className="h-full flex flex-col">
+                {state.jobFormOpen && (
+                  <div className={`${state.callFormOpen ? 'h-1/2' : 'h-full'} ${state.callFormOpen ? 'border-b border-gray-200' : ''}`}>
                     <div className="h-full p-4 overflow-y-auto">
                       <JobForm
                         jobToEdit={state.editingJob}
@@ -87,7 +87,9 @@ export default function Layout() {
                       />
                     </div>
                   </div>
-                  <div className="flex-none h-1/2">
+                )}
+                {state.callFormOpen && (
+                  <div className={`${state.jobFormOpen ? 'h-1/2' : 'h-full'}`}>
                     <div className="h-full p-4 overflow-y-auto">
                       <CallForm
                         callToEdit={state.editingCall}
@@ -98,31 +100,8 @@ export default function Layout() {
                       />
                     </div>
                   </div>
-                </div>
-              ) : state.jobFormOpen ? (
-                <div className="h-full">
-                  <div className="h-full p-4 overflow-y-auto">
-                    <JobForm
-                      jobToEdit={state.editingJob}
-                      employerOptions={employers.map((e) => ({ value: e._id!, label: e.name }))}
-                      onSuccess={closeJobForm}
-                      onCancel={closeJobForm}
-                    />
-                  </div>
-                </div>
-              ) : state.callFormOpen ? (
-                <div className="h-full">
-                  <div className="h-full p-4 overflow-y-auto">
-                    <CallForm
-                      callToEdit={state.editingCall}
-                      employerOptions={employers.map((e) => ({ value: e._id!, label: e.name }))}
-                      jobs={jobs}
-                      onSuccess={closeCallForm}
-                      onCancel={closeCallForm}
-                    />
-                  </div>
-                </div>
-              ) : null}
+                )}
+              </div>
             </div>
           </aside>
         )}
