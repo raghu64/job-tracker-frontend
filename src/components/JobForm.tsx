@@ -15,7 +15,7 @@ type Props = {
 const statusOptions = [
   "Submitted to Vendor","Vendor called","Submitted to Client","Phone Screening",
   "Video Screening","Code Assessment","Interview L1","Interview L2","Interview L3",
-  "Final Round","In-Person","Rejected","Selected"
+  "Final Round","In-Person","Rejected","Selected", "Dropped by Candidate"
 ];
 
 const initialJob: Job = {
